@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: efe_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: efe_taxi_dispatch
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - efe_network
+    ports:
+      - "27017:27017"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: efe_app
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/efe_taxi_dispatch
+      JWT_SECRET: ${JWT_SECRET:-efe-taxi-super-secret-key-change-in-production}
+      JWT_EXPIRES: ${JWT_EXPIRES:-7d}
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - mongodb
+    volumes:
+      - uploads_data:/app/.output/public/uploads
+    networks:
+      - efe_network
+    ports:
+      - "3000:3000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: efe_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - efe_network
+
+volumes:
+  mongo_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  efe_network:
+    driver: bridge

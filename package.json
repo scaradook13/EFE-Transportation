@@ -1,0 +1,45 @@
+{
+  "name": "efe-taxi-dispatch-system",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck",
+    "seed": "npx tsx server/seeds/seed.ts"
+  },
+  "dependencies": {
+    "@iconify-json/heroicons": "^1.1.24",
+    "@iconify-json/lucide": "^1.2.117",
+    "@nuxt/ui": "^4.10.0",
+    "@pinia/nuxt": "^1.0.1",
+    "@vueuse/nuxt": "^14.3.0",
+    "argon2": "^0.45.1",
+    "bcryptjs": "^2.4.3",
+    "chart.js": "^4.4.9",
+    "dayjs": "^1.11.13",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.14.3",
+    "multer": "^1.4.5-lts.2",
+    "nuxt": "^4.4.8",
+    "pinia": "^2.3.1",
+    "tailwindcss": "^4.1.11",
+    "uuid": "^11.1.0",
+    "vue-chartjs": "^5.3.2",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.16.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^1.4.12",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9.30.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vue-tsc": "^3.3.7"
+  }
+}
