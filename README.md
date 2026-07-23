@@ -158,4 +158,4 @@ EFE/
 
 ## 📝 License
 
-© 2024 R&T Group of Taxi. All rights reserved.
+© 2026 R&T Group of Taxi. All rights reserved.
