@@ -17,12 +17,12 @@ onMounted(async () => {
 const navigation = computed(() => {
   const items = [
     { name: 'Dashboard', href: '/', icon: 'i-heroicons-squares-2x2', roles: ['admin', 'dispatcher', 'hr'] },
-    { name: 'Dispatches', href: '/dispatches', icon: 'i-heroicons-map-pin', roles: ['admin', 'dispatcher'] },
-    { name: 'New Dispatch', href: '/dispatches/new', icon: 'i-heroicons-plus-circle', roles: ['admin', 'dispatcher'] },
+    { name: 'Taxi Assignment', href: '/assignments', icon: 'i-heroicons-key', roles: ['admin', 'dispatcher'] },
     { name: 'Drivers', href: '/drivers', icon: 'i-heroicons-user-group', roles: ['admin', 'dispatcher', 'hr'] },
-    { name: 'Taxi Fleet', href: '/taxi-units', icon: 'i-heroicons-truck', roles: ['admin'] },
+    { name: 'Taxi Fleet', href: '/taxi-units', icon: 'i-heroicons-truck', roles: ['admin', 'dispatcher', 'hr'] },
+    { name: 'Users', href: '/users', icon: 'i-heroicons-users', roles: ['admin'] },
     { name: 'Audit Logs', href: '/audit-logs', icon: 'i-heroicons-clipboard-document-list', roles: ['admin'] },
-    { name: 'User Settings', href: '/settings', icon: 'i-heroicons-cog-6-tooth', roles: ['admin'] }
+    { name: 'Settings', href: '/settings', icon: 'i-heroicons-cog-6-tooth', roles: ['admin'] }
   ]
   return items.filter(item => item.roles.includes(authStore.user?.role || ''))
 })

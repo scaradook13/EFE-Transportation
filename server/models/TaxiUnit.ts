@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose'
 
-export type TaxiUnitStatus = 'Available' | 'On Trip' | 'Maintenance'
+export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
 
 export interface ITaxiUnit extends Document {
   _id: mongoose.Types.ObjectId
@@ -56,7 +56,7 @@ const TaxiUnitSchema = new Schema<ITaxiUnit>(
     status: {
       type: String,
       enum: {
-        values: ['Available', 'On Trip', 'Maintenance'],
+        values: ['Available', 'In Use', 'Maintenance'],
         message: '{VALUE} is not a valid status'
       },
       default: 'Available',

@@ -170,6 +170,7 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                   <th>Contact</th>
                   <th>License No.</th>
                   <th>License Exp.</th>
+                  <th>Duty Status</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -207,7 +208,15 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                     </div>
                   </td>
                   <td>
-                    <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', driver.employmentStatus === 'Active' ? 'badge-active' : 'badge-cancelled']">
+                    <span :class="[
+                      'px-2 py-0.5 rounded-full text-xs font-medium',
+                      (driver as any).operationalStatus === 'Active' ? 'badge-active' : 'badge-available'
+                    ]">
+                      {{ (driver as any).operationalStatus === 'Active' ? '🟢 On Duty' : '⚪ Available' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', driver.employmentStatus === 'Active' ? 'badge-completed' : 'badge-cancelled']">
                       {{ driver.employmentStatus }}
                     </span>
                   </td>

@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose'
 
 export type EmploymentStatus = 'Active' | 'Inactive'
+export type OperationalStatus = 'Available' | 'Active'
 
 export interface IDriver extends Document {
   _id: mongoose.Types.ObjectId
@@ -18,6 +19,7 @@ export interface IDriver extends Document {
   licenseExpiration: Date
   photo: string | null
   employmentStatus: EmploymentStatus
+  operationalStatus: OperationalStatus
   createdBy: mongoose.Types.ObjectId
   updatedBy: mongoose.Types.ObjectId | null
   createdAt: Date
@@ -90,6 +92,16 @@ const DriverSchema = new Schema<IDriver>(
       },
       default: 'Active',
       required: true
+    },
+    operationalStatus: {
+      type: String,
+      enum: {
+        values: ['Available', 'Active'],
+        message: '{VALUE} is not a valid operational status'
+      },
+      default: 'Available',
+      required: true,
+      index: true
     },
     createdBy: {
       type: Schema.Types.ObjectId,

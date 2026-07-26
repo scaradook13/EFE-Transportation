@@ -37,6 +37,7 @@ export interface UpdateDriverDto {
 
 export interface DriverFilters {
   employmentStatus?: EmploymentStatus
+  operationalStatus?: 'Available' | 'Active'
   search?: string
 }
 
@@ -45,6 +46,7 @@ export const driverRepository = {
     const query: FilterQuery<IDriver> = {}
 
     if (filters.employmentStatus) query.employmentStatus = filters.employmentStatus
+    if (filters.operationalStatus) query.operationalStatus = filters.operationalStatus
     if (filters.search) {
       query.$or = [
         { fullName: { $regex: filters.search, $options: 'i' } },

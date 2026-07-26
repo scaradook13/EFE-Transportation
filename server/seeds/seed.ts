@@ -10,7 +10,6 @@ dotenv.config()
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/efe_taxi_dispatch'
 
-// Define schemas inline to avoid Nuxt runtime dependencies
 import argon2 from 'argon2'
 
 async function seed() {
@@ -69,6 +68,7 @@ async function seed() {
     licenseExpiration: { type: Date, required: true },
     photo: { type: String, default: null },
     employmentStatus: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+    operationalStatus: { type: String, enum: ['Available', 'Active'], default: 'Available' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
   }, { timestamps: true })
@@ -77,11 +77,11 @@ async function seed() {
 
   const adminUser = users[0] as { _id: mongoose.Types.ObjectId }
   const driversData = [
-    { driverId: 'DRV-0001', fullName: 'Pedro Reyes', address: '123 Mayon St, Quezon City', contactNumber: '09171234567', birthDate: new Date('1985-03-15'), emergencyContact: { name: 'Ana Reyes', relationship: 'Spouse', contactNumber: '09187654321' }, licenseNumber: 'N01-23-456789', licenseExpiration: new Date('2026-03-15'), employmentStatus: 'Active', createdBy: adminUser._id },
-    { driverId: 'DRV-0002', fullName: 'Carlos Mendoza', address: '456 Rizal Ave, Manila', contactNumber: '09181234568', birthDate: new Date('1990-07-22'), emergencyContact: { name: 'Lito Mendoza', relationship: 'Father', contactNumber: '09188765432' }, licenseNumber: 'N01-23-987654', licenseExpiration: new Date('2025-07-22'), employmentStatus: 'Active', createdBy: adminUser._id },
-    { driverId: 'DRV-0003', fullName: 'Roberto Flores', address: '789 Bonifacio St, Makati', contactNumber: '09191234569', birthDate: new Date('1988-11-10'), emergencyContact: { name: 'Grace Flores', relationship: 'Wife', contactNumber: '09198765433' }, licenseNumber: 'N01-23-111222', licenseExpiration: new Date('2027-11-10'), employmentStatus: 'Active', createdBy: adminUser._id },
-    { driverId: 'DRV-0004', fullName: 'Antonio Bautista', address: '321 Mabini St, Pasig', contactNumber: '09201234570', birthDate: new Date('1995-01-05'), emergencyContact: { name: 'Rosa Bautista', relationship: 'Mother', contactNumber: '09208765434' }, licenseNumber: 'N01-23-333444', licenseExpiration: new Date('2028-01-05'), employmentStatus: 'Inactive', createdBy: adminUser._id },
-    { driverId: 'DRV-0005', fullName: 'Emmanuel Torres', address: '654 Luna St, Caloocan', contactNumber: '09211234571', birthDate: new Date('1992-09-18'), emergencyContact: { name: 'Josie Torres', relationship: 'Spouse', contactNumber: '09218765435' }, licenseNumber: 'N01-23-555666', licenseExpiration: new Date('2026-09-18'), employmentStatus: 'Active', createdBy: adminUser._id }
+    { driverId: 'DRV-0001', fullName: 'Pedro Reyes', address: '123 Mayon St, Quezon City', contactNumber: '09171234567', birthDate: new Date('1985-03-15'), emergencyContact: { name: 'Ana Reyes', relationship: 'Spouse', contactNumber: '09187654321' }, licenseNumber: 'N01-23-456789', licenseExpiration: new Date('2026-03-15'), employmentStatus: 'Active', operationalStatus: 'Available', createdBy: adminUser._id },
+    { driverId: 'DRV-0002', fullName: 'Carlos Mendoza', address: '456 Rizal Ave, Manila', contactNumber: '09181234568', birthDate: new Date('1990-07-22'), emergencyContact: { name: 'Lito Mendoza', relationship: 'Father', contactNumber: '09188765432' }, licenseNumber: 'N01-23-987654', licenseExpiration: new Date('2025-07-22'), employmentStatus: 'Active', operationalStatus: 'Available', createdBy: adminUser._id },
+    { driverId: 'DRV-0003', fullName: 'Roberto Flores', address: '789 Bonifacio St, Makati', contactNumber: '09191234569', birthDate: new Date('1988-11-10'), emergencyContact: { name: 'Grace Flores', relationship: 'Wife', contactNumber: '09198765433' }, licenseNumber: 'N01-23-111222', licenseExpiration: new Date('2027-11-10'), employmentStatus: 'Active', operationalStatus: 'Available', createdBy: adminUser._id },
+    { driverId: 'DRV-0004', fullName: 'Antonio Bautista', address: '321 Mabini St, Pasig', contactNumber: '09201234570', birthDate: new Date('1995-01-05'), emergencyContact: { name: 'Rosa Bautista', relationship: 'Mother', contactNumber: '09208765434' }, licenseNumber: 'N01-23-333444', licenseExpiration: new Date('2028-01-05'), employmentStatus: 'Inactive', operationalStatus: 'Available', createdBy: adminUser._id },
+    { driverId: 'DRV-0005', fullName: 'Emmanuel Torres', address: '654 Luna St, Caloocan', contactNumber: '09211234571', birthDate: new Date('1992-09-18'), emergencyContact: { name: 'Josie Torres', relationship: 'Spouse', contactNumber: '09218765435' }, licenseNumber: 'N01-23-555666', licenseExpiration: new Date('2026-09-18'), employmentStatus: 'Active', operationalStatus: 'Available', createdBy: adminUser._id }
   ]
 
   const drivers = await Driver.insertMany(driversData)
@@ -95,7 +95,7 @@ async function seed() {
     model: { type: String, required: true },
     year: { type: Number, required: true },
     color: { type: String, required: true },
-    status: { type: String, enum: ['Available', 'On Trip', 'Maintenance'], default: 'Available' }
+    status: { type: String, enum: ['Available', 'In Use', 'Maintenance'], default: 'Available' }
   }, { timestamps: true })
 
   const TaxiUnit = mongoose.models.TaxiUnit || mongoose.model('TaxiUnit', TaxiUnitSchema)
@@ -111,23 +111,23 @@ async function seed() {
   const taxiUnits = await TaxiUnit.insertMany(taxiUnitsData)
   console.log(`🚕 Created ${taxiUnits.length} taxi units`)
 
-  // Create sample dispatches
-  const DispatchSchema = new mongoose.Schema({
-    dispatchNumber: { type: String, unique: true },
+  // Create sample Driver Assignments
+  const DriverAssignmentSchema = new mongoose.Schema({
+    assignmentNumber: { type: String, unique: true },
     driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver' },
     taxiUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'TaxiUnit' },
-    passengerName: { type: String, required: true },
-    pickupLocation: { type: String, required: true },
-    destination: { type: String, required: true },
-    dispatcher: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    status: { type: String, enum: ['Active', 'Completed', 'Cancelled'], default: 'Active' },
-    departureTime: { type: Date, required: true },
-    arrivalTime: { type: Date, default: null },
-    tripDuration: { type: Number, default: null },
+    issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedAt: { type: Date, required: true },
+    returnedAt: { type: Date, default: null },
+    timeIn: { type: Date, required: true },
+    timeOut: { type: Date, default: null },
+    totalMinutes: { type: Number, default: null },
+    totalHours: { type: Number, default: null },
+    status: { type: String, enum: ['Active', 'Completed'], default: 'Active' },
     remarks: { type: String, default: '' }
   }, { timestamps: true })
 
-  const Dispatch = mongoose.models.Dispatch || mongoose.model('Dispatch', DispatchSchema)
+  const DriverAssignment = mongoose.models.DriverAssignment || mongoose.model('DriverAssignment', DriverAssignmentSchema)
 
   const dispatcherUser = users[1] as { _id: mongoose.Types.ObjectId }
   const typedDrivers = drivers as Array<{ _id: mongoose.Types.ObjectId }>
@@ -137,14 +137,55 @@ async function seed() {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const dateStr = today.getFullYear().toString() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0')
 
-  const dispatchesData = [
-    { dispatchNumber: `DSP-${dateStr}-0001`, driver: typedDrivers[0]._id, taxiUnit: typedTaxis[0]._id, passengerName: 'Maria Dela Rosa', pickupLocation: 'SM Mall of Asia', destination: 'Ninoy Aquino International Airport', dispatcher: dispatcherUser._id, status: 'Completed', departureTime: new Date(now.getTime() - 3 * 60 * 60 * 1000), arrivalTime: new Date(now.getTime() - 2 * 60 * 60 * 1000), tripDuration: 60, remarks: 'Rush trip' },
-    { dispatchNumber: `DSP-${dateStr}-0002`, driver: typedDrivers[1]._id, taxiUnit: typedTaxis[1]._id, passengerName: 'Juan Reyes', pickupLocation: 'BGC High Street', destination: 'Ortigas Center', dispatcher: dispatcherUser._id, status: 'Completed', departureTime: new Date(now.getTime() - 2 * 60 * 60 * 1000), arrivalTime: new Date(now.getTime() - 90 * 60 * 1000), tripDuration: 30, remarks: '' },
-    { dispatchNumber: `DSP-${dateStr}-0003`, driver: typedDrivers[2]._id, taxiUnit: typedTaxis[2]._id, passengerName: 'Ana Gonzales', pickupLocation: 'Makati Medical Center', destination: 'Quezon Avenue', dispatcher: dispatcherUser._id, status: 'Active', departureTime: new Date(now.getTime() - 30 * 60 * 1000), arrivalTime: null, tripDuration: null, remarks: 'VIP passenger' }
+  // Yesterday completed assignment
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const timeIn1 = new Date(yesterday)
+  timeIn1.setHours(8, 0, 0, 0)
+  const timeOut1 = new Date(yesterday)
+  timeOut1.setHours(17, 30, 0, 0)
+  const mins1 = Math.round((timeOut1.getTime() - timeIn1.getTime()) / 60000)
+
+  // Today completed assignment
+  const timeIn2 = new Date(today)
+  timeIn2.setHours(7, 0, 0, 0)
+  const timeOut2 = new Date(today)
+  timeOut2.setHours(16, 0, 0, 0)
+  const mins2 = Math.round((timeOut2.getTime() - timeIn2.getTime()) / 60000)
+
+  const assignmentsData = [
+    {
+      assignmentNumber: `ASN-${String(yesterday.getFullYear()) + String(yesterday.getMonth() + 1).padStart(2, '0') + String(yesterday.getDate()).padStart(2, '0')}-0001`,
+      driver: typedDrivers[0]._id,
+      taxiUnit: typedTaxis[0]._id,
+      issuedBy: dispatcherUser._id,
+      assignedAt: timeIn1,
+      returnedAt: timeOut1,
+      timeIn: timeIn1,
+      timeOut: timeOut1,
+      totalMinutes: mins1,
+      totalHours: Math.round((mins1 / 60) * 100) / 100,
+      status: 'Completed',
+      remarks: 'Normal shift'
+    },
+    {
+      assignmentNumber: `ASN-${dateStr}-0001`,
+      driver: typedDrivers[1]._id,
+      taxiUnit: typedTaxis[1]._id,
+      issuedBy: dispatcherUser._id,
+      assignedAt: timeIn2,
+      returnedAt: timeOut2,
+      timeIn: timeIn2,
+      timeOut: timeOut2,
+      totalMinutes: mins2,
+      totalHours: Math.round((mins2 / 60) * 100) / 100,
+      status: 'Completed',
+      remarks: ''
+    }
   ]
 
-  await Dispatch.insertMany(dispatchesData)
-  console.log(`📋 Created ${dispatchesData.length} sample dispatches`)
+  await DriverAssignment.insertMany(assignmentsData)
+  console.log(`📋 Created ${assignmentsData.length} sample assignments`)
 
   // Create sample notifications
   const NotificationSchema = new mongoose.Schema({
@@ -158,7 +199,7 @@ async function seed() {
   const Notification = mongoose.models.Notification || mongoose.model('Notification', NotificationSchema)
 
   await Notification.insertMany([
-    { title: 'Welcome to EFE Taxi Dispatch System', message: 'System is ready. Start dispatching taxis efficiently!', type: 'success', isRead: false, user: adminUser._id },
+    { title: 'Welcome to EFE Taxi Dispatch System', message: 'System is ready. Start issuing taxis to drivers!', type: 'success', isRead: false, user: adminUser._id },
     { title: 'License Expiry Alert', message: 'Driver DRV-0002 license expires in 30 days', type: 'warning', isRead: false, user: adminUser._id }
   ])
 
@@ -166,9 +207,9 @@ async function seed() {
 
   console.log('\n✅ Seed completed successfully!')
   console.log('\n📋 Login Credentials:')
-  console.log('   Admin     → username: admin        | password: Admin@123')
-  console.log('   Dispatcher → username: dispatcher1 | password: Dispatcher@123')
-  console.log('   HR        → username: hr1          | password: HR@123')
+  console.log('   Admin      → username: admin        | password: Admin@123')
+  console.log('   Dispatcher → username: dispatcher1  | password: Dispatcher@123')
+  console.log('   HR         → username: hr1          | password: HR@123')
 
   await mongoose.disconnect()
   process.exit(0)

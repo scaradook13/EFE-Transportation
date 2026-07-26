@@ -75,7 +75,7 @@ const handleDelete = async () => {
 
 const statusClass = (status: string) => {
   if (status === 'Available') return 'badge-available'
-  if (status === 'On Trip') return 'badge-on-trip'
+  if (status === 'In Use') return 'badge-active'
   return 'badge-maintenance'
 }
 </script>
@@ -102,7 +102,7 @@ const statusClass = (status: string) => {
         <select v-model="statusFilter" class="form-input w-full sm:w-48">
           <option value="">All Status</option>
           <option value="Available">Available</option>
-          <option value="On Trip">On Trip</option>
+          <option value="In Use">In Use</option>
           <option value="Maintenance">Maintenance</option>
         </select>
       </div>
@@ -227,7 +227,6 @@ const statusClass = (status: string) => {
                   <label class="form-label">Status</label>
                   <select v-model="form.status" class="form-input">
                     <option value="Available">Available</option>
-                    <option value="On Trip">On Trip</option>
                     <option value="Maintenance">Maintenance</option>
                   </select>
                 </div>

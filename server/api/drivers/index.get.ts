@@ -9,6 +9,7 @@ export default defineEventHandler(async (event) => {
   const limit = Number(query.limit) || 10
   const filters = {
     employmentStatus: query.employmentStatus as 'Active' | 'Inactive' | undefined,
+    operationalStatus: query.operationalStatus as 'Available' | 'Active' | undefined,
     search: query.search as string | undefined
   }
 

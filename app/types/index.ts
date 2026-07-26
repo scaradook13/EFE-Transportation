@@ -21,6 +21,7 @@ export interface AuthUser {
 
 // ==================== Driver Types ====================
 export type EmploymentStatus = 'Active' | 'Inactive'
+export type OperationalStatus = 'Available' | 'Active'
 
 export interface EmergencyContact {
   name: string
@@ -40,6 +41,7 @@ export interface Driver {
   licenseExpiration: string
   photo: string | null
   employmentStatus: EmploymentStatus
+  operationalStatus: OperationalStatus
   createdBy: User | string
   updatedBy: User | string | null
   createdAt: string
@@ -59,7 +61,7 @@ export interface CreateDriverPayload {
 }
 
 // ==================== Taxi Unit Types ====================
-export type TaxiUnitStatus = 'Available' | 'On Trip' | 'Maintenance'
+export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
 
 export interface TaxiUnit {
   _id: string
@@ -148,17 +150,14 @@ export interface AuditLog {
 
 // ==================== Dashboard Types ====================
 export interface DashboardStats {
-  totalDrivers: number
+  availableDrivers: number
   activeDrivers: number
-  totalTaxis: number
   availableTaxis: number
-  onTripTaxis: number
+  inUseTaxis: number
   maintenanceTaxis: number
-  totalDispatches: number
-  activeDispatches: number
-  completedDispatches: number
-  cancelledDispatches: number
-  todayDispatches: number
+  todayAssignments: number
+  todayReturned: number
+  avgHours: number
 }
 
 export interface TrendDataPoint {
@@ -169,7 +168,7 @@ export interface TrendDataPoint {
 export interface DashboardData {
   stats: DashboardStats
   weeklyTrend: TrendDataPoint[]
-  recentDispatches: Dispatch[]
+  activeAssignments: any[]
 }
 
 // ==================== API Response Types ====================
