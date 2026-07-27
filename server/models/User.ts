@@ -10,6 +10,7 @@ export interface IUser extends Document {
   fullName: string
   role: UserRole
   isActive: boolean
+  isPrimaryAdmin?: boolean
   refreshTokenHash: string | null
   lastLogin: Date | null
   lastActivity: Date | null
@@ -54,6 +55,10 @@ const UserSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true
+    },
+    isPrimaryAdmin: {
+      type: Boolean,
+      default: false
     },
     refreshTokenHash: {
       type: String,

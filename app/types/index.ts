@@ -7,6 +7,7 @@ export interface User {
   fullName: string
   role: UserRole
   isActive: boolean
+  isPrimaryAdmin?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -17,6 +18,7 @@ export interface AuthUser {
   fullName: string
   role: UserRole
   isActive: boolean
+  isPrimaryAdmin?: boolean
 }
 
 // ==================== Driver Types ====================

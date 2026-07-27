@@ -1,4 +1,5 @@
 import { userRepository } from '~~/server/repositories/userRepository'
+import { logAudit } from '~~/server/utils/auditLogger'
 import { z } from 'zod'
 
 const updateUserSchema = z.object({
@@ -26,8 +27,19 @@ export default defineEventHandler(async (event) => {
   }
 
   if (method === 'DELETE') {
-    const user = await userRepository.remove(id)
-    if (!user) throw createError({ statusCode: 404, message: 'User not found' })
+    const targetUser = await userRepository.findById(id)
+    if (!targetUser) throw createError({ statusCode: 404, message: 'User not found' })
+
+    const authUser = requireRole(event, 'admin')
+
+    if (targetUser.isPrimaryAdmin) {
+      logAudit(event, authUser.userId, 'DELETE_USER_BLOCKED', 'User Management', `Attempted to delete primary admin: ${targetUser.username}`)
+      setResponseStatus(event, 403)
+      return { success: false, message: 'The primary administrator account cannot be deleted.' }
+    }
+
+    await userRepository.remove(id)
+    logAudit(event, authUser.userId, 'DELETE_USER', 'User Management', `Deleted user: ${targetUser.username}`)
     return successResponse(null, 'User deleted successfully')
   }
 

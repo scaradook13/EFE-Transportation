@@ -16,6 +16,10 @@ const showModal = ref(false)
 const editingUser = ref<User | null>(null)
 const formLoading = ref(false)
 
+const showDeleteModal = ref(false)
+const userToDelete = ref<User | null>(null)
+const deleteLoading = ref(false)
+
 const form = reactive({
   username: '', password: '', fullName: '',
   role: 'dispatcher' as 'admin' | 'dispatcher' | 'hr', isActive: true
@@ -68,6 +72,26 @@ const toggleActive = async (user: User) => {
     toast.add({ title: `User ${user.isActive ? 'deactivated' : 'activated'}`, color: 'success' })
     await loadUsers()
   } catch { toast.add({ title: 'Failed to update user', color: 'error' }) }
+}
+
+const confirmDelete = (user: User) => {
+  userToDelete.value = user
+  showDeleteModal.value = true
+}
+
+const handleDelete = async () => {
+  if (!userToDelete.value) return
+  deleteLoading.value = true
+  try {
+    await $fetch(`/api/users/${userToDelete.value._id}`, { method: 'DELETE' })
+    toast.add({ title: 'User deleted successfully', color: 'success' })
+    await loadUsers()
+    showDeleteModal.value = false
+  } catch (err: unknown) {
+    toast.add({ title: 'Error', description: (err as any)?.data?.message || 'Failed to delete user', color: 'error' })
+  } finally {
+    deleteLoading.value = false
+  }
 }
 
 const roleColor = (role: string) => {
@@ -151,6 +175,20 @@ const roleColor = (role: string) => {
                         :class="user.isActive ? 'text-yellow-400' : 'text-green-400'"
                       />
                     </button>
+                    <template v-if="user.isPrimaryAdmin">
+                      <div class="p-1.5 cursor-not-allowed group relative" title="Primary Administrator cannot be deleted.">
+                        <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-amber-500" />
+                      </div>
+                    </template>
+                    <template v-else-if="user._id !== authStore.user?.userId">
+                      <button
+                        class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                        title="Delete User"
+                        @click="confirmDelete(user)"
+                      >
+                        <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400 hover:text-red-300" />
+                      </button>
+                    </template>
                   </div>
                 </td>
               </tr>
@@ -205,6 +243,36 @@ const roleColor = (role: string) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeleteModal = false" />
+          <div class="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <div class="flex items-center gap-3 text-red-400 mb-4">
+              <div class="p-3 bg-red-500/10 rounded-full">
+                <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+              </div>
+              <h2 class="text-xl font-bold text-white">Delete User?</h2>
+            </div>
+            
+            <p class="text-slate-300 mb-2">
+              Are you sure you want to permanently delete <span class="font-bold text-white">{{ userToDelete?.fullName }}</span>?
+            </p>
+            <p class="text-red-400 text-sm mb-6">This action cannot be undone.</p>
+            
+            <div class="flex gap-3">
+              <button type="button" class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
+              <button type="button" class="btn-primary flex-1 !bg-red-600 hover:!bg-red-500" @click="handleDelete" :disabled="deleteLoading">
+                <UIcon v-if="deleteLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+                {{ deleteLoading ? 'Deleting...' : 'Delete' }}
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
