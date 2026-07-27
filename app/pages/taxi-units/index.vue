@@ -245,7 +245,7 @@ const getTaxiColorHex = (colorName: string) => {
                 <div>
                   <label class="form-label mb-1 block">Color *</label>
                   <div class="relative">
-                    <input v-model="form.color" type="text" class="form-input pl-10" required placeholder="Yellow" />
+                    <input v-model="form.color" type="text" class="form-input !pl-10" required placeholder="Yellow" />
                     <div 
                       class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border shadow-sm" 
                       :style="{ 
