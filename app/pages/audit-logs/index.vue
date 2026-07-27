@@ -129,7 +129,9 @@ const actionColor = (action: string) => {
                       {{ log.module }}
                     </span>
                   </td>
-                  <td class="text-slate-400 text-xs max-w-[200px] truncate">{{ log.details || '—' }}</td>
+                  <td>
+                    <NotesViewer :content="log.details" title="Audit Log Notes" />
+                  </td>
                   <td class="font-mono text-xs text-slate-500">{{ log.ipAddress }}</td>
                 </tr>
               </tbody>

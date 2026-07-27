@@ -223,7 +223,9 @@ const elapsed = (timeIn: string) => {
                 <td>
                   <span class="text-xs font-mono" style="color: #f9a825;">{{ elapsed(a.timeIn) }}</span>
                 </td>
-                <td class="text-slate-400 text-xs">{{ a.remarks || '—' }}</td>
+                <td>
+                  <NotesViewer :content="a.remarks" title="Assignment Notes" />
+                </td>
                 <td v-if="canIssue">
                   <button
                     class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -293,7 +295,9 @@ const elapsed = (timeIn: string) => {
                   <td class="text-xs font-mono" :style="{ color: a.totalHours ? '#f9a825' : '#64748b' }">
                     {{ formatDuration(a.totalMinutes) }}
                   </td>
-                  <td class="text-slate-400 text-xs">{{ a.remarks || '—' }}</td>
+                  <td>
+                    <NotesViewer :content="a.remarks" title="Assignment Notes" />
+                  </td>
                   <td>
                     <span :class="[
                       'px-2 py-0.5 rounded-full text-xs font-medium',
