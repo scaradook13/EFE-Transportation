@@ -1,4 +1,7 @@
 import { DriverAssignment } from '../models/DriverAssignment'
+import { Driver } from '../models/Driver'
+import { TaxiUnit } from '../models/TaxiUnit'
+import { User } from '../models/User'
 import type { FilterQuery } from 'mongoose'
 import type { IDriverAssignment } from '../models/DriverAssignment'
 
@@ -8,6 +11,7 @@ export interface AssignmentFilters {
   taxiUnit?: string
   dateFrom?: string
   dateTo?: string
+  search?: string
 }
 
 export const assignmentRepository = {
@@ -21,6 +25,65 @@ export const assignmentRepository = {
       query.assignedAt = {}
       if (filters.dateFrom) query.assignedAt.$gte = new Date(filters.dateFrom)
       if (filters.dateTo) query.assignedAt.$lte = new Date(new Date(filters.dateTo).setHours(23, 59, 59, 999))
+    }
+
+    if (filters.search) {
+      const searchRegex = new RegExp(filters.search.trim(), 'i')
+      
+      const [matchingDrivers, matchingTaxis, matchingDispatchers] = await Promise.all([
+        Driver.find({ $or: [{ fullName: searchRegex }, { driverId: searchRegex }] }).select('_id'),
+        TaxiUnit.find({ $or: [{ taxiNumber: searchRegex }, { plateNumber: searchRegex }, { model: searchRegex }] }).select('_id'),
+        User.find({ fullName: searchRegex }).select('_id')
+      ])
+
+      const searchOrConditions: any[] = [
+        { assignmentNumber: searchRegex },
+        { status: searchRegex },
+        { remarks: searchRegex },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $dateToString: { format: "%Y-%m-%d %H:%M:%S %b %B", date: "$assignedAt", timezone: "+08:00" } },
+              regex: filters.search.trim(),
+              options: "i"
+            }
+          }
+        },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $dateToString: { format: "%Y-%m-%d %H:%M:%S %b %B", date: "$timeIn", timezone: "+08:00" } },
+              regex: filters.search.trim(),
+              options: "i"
+            }
+          }
+        },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { 
+                $cond: {
+                  if: { $ne: ["$timeOut", null] },
+                  then: { $dateToString: { format: "%Y-%m-%d %H:%M:%S %b %B", date: "$timeOut", timezone: "+08:00" } },
+                  else: ""
+                }
+              },
+              regex: filters.search.trim(),
+              options: "i"
+            }
+          }
+        }
+      ]
+
+      if (matchingDrivers.length > 0) searchOrConditions.push({ driver: { $in: matchingDrivers.map(d => d._id) } })
+      if (matchingTaxis.length > 0) searchOrConditions.push({ taxiUnit: { $in: matchingTaxis.map(t => t._id) } })
+      if (matchingDispatchers.length > 0) searchOrConditions.push({ issuedBy: { $in: matchingDispatchers.map(u => u._id) } })
+
+      if (query.$and) {
+        query.$and.push({ $or: searchOrConditions })
+      } else {
+        query.$and = [{ $or: searchOrConditions }]
+      }
     }
 
     const skip = (page - 1) * limit

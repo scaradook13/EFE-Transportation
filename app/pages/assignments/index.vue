@@ -23,6 +23,19 @@ const returningTaxi = ref(false)
 const historyPage = ref(1)
 const statusFilter = ref('')
 
+// --- Search ---
+const searchQuery = ref('')
+const debouncedSearch = ref('')
+let debounceTimer: ReturnType<typeof setTimeout>
+
+watch(searchQuery, (val) => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    debouncedSearch.value = val
+    historyPage.value = 1
+  }, 300)
+})
+
 // --- Available Drivers & Taxis for issue form ---
 const availableDrivers = ref<{ _id: string; fullName: string; driverId: string }[]>([])
 const availableTaxis = ref<{ _id: string; taxiNumber: string; plateNumber: string; brand: string; model: string }[]>([])
@@ -31,7 +44,12 @@ const canIssue = computed(() => authStore.user?.role === 'dispatcher')
 
 const loadData = async () => {
   await assignmentStore.fetchActive()
-  await assignmentStore.fetchAll({ page: historyPage.value, limit: 15, ...statusFilter.value ? { status: statusFilter.value } : {} })
+  await assignmentStore.fetchAll({ 
+    page: historyPage.value, 
+    limit: 15, 
+    ...statusFilter.value ? { status: statusFilter.value } : {},
+    ...debouncedSearch.value ? { search: debouncedSearch.value } : {}
+  })
 }
 
 const loadFormData = async () => {
@@ -44,7 +62,7 @@ const loadFormData = async () => {
 }
 
 onMounted(loadData)
-watch([historyPage, statusFilter], loadData)
+watch([historyPage, statusFilter, debouncedSearch], loadData)
 
 const openIssueModal = async () => {
   issueForm.driverId = ''
@@ -249,11 +267,22 @@ const elapsed = (timeIn: string) => {
             <h2 class="text-base font-semibold text-white">Assignment History</h2>
             <p class="text-xs text-slate-500 mt-0.5">All taxi assignment records</p>
           </div>
-          <select v-model="statusFilter" class="form-input w-40 text-xs">
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Completed">Completed</option>
-          </select>
+          <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div class="relative w-full sm:w-80">
+              <UIcon name="i-heroicons-magnifying-glass" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input 
+                v-model="searchQuery"
+                type="text" 
+                class="form-input w-full !pl-10 pr-3 text-xs" 
+                placeholder="Search by assignment number, driver, taxi, dispatcher, remarks..."
+              />
+            </div>
+            <select v-model="statusFilter" class="form-input w-full sm:w-40 text-xs">
+              <option value="">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
         </div>
 
         <div v-if="assignmentStore.loading" class="p-10 text-center">
@@ -261,7 +290,10 @@ const elapsed = (timeIn: string) => {
         </div>
         <div v-else-if="!assignmentStore.assignments.length" class="p-12 text-center">
           <UIcon name="i-heroicons-clipboard-document-list" class="w-12 h-12 text-slate-700 mx-auto mb-3" />
-          <p class="text-slate-400">No assignment records found</p>
+          <p class="text-slate-400 font-medium">
+            {{ debouncedSearch ? 'No assignment history found.' : 'No assignment records found' }}
+          </p>
+          <p v-if="debouncedSearch" class="text-slate-500 text-xs mt-1">Try searching using a different keyword.</p>
         </div>
         <div v-else>
           <div class="overflow-x-auto">

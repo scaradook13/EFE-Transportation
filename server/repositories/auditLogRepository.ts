@@ -1,4 +1,5 @@
 import { AuditLog } from '~~/server/models/AuditLog'
+import { User } from '~~/server/models/User'
 
 export interface AuditLogFilters {
   user?: string
@@ -21,22 +22,43 @@ export const auditLogRepository = {
     }
 
     if (filters.search) {
-      const User = mongoose.model('User')
-      const users = await User.find({ fullName: { $regex: filters.search, $options: 'i' } }).select('_id')
+      const searchRegex = new RegExp(filters.search.trim(), 'i')
+      const users = await User.find({ 
+        $or: [
+          { fullName: searchRegex },
+          { username: searchRegex },
+          { role: searchRegex }
+        ]
+      }).select('_id')
+      
       const userIds = users.map((u: any) => u._id)
       
-      const searchRegex = { $regex: filters.search, $options: 'i' }
       const orConditions: any[] = [
         { action: searchRegex },
         { module: searchRegex },
-        { details: searchRegex }
+        { details: searchRegex },
+        { ipAddress: searchRegex },
+        { browser: searchRegex },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $dateToString: { format: "%Y-%m-%d %H:%M:%S %b %B", date: "$createdAt", timezone: "+08:00" } },
+              regex: filters.search.trim(),
+              options: "i"
+            }
+          }
+        }
       ]
       
       if (userIds.length > 0) {
         orConditions.push({ user: { $in: userIds } })
       }
       
-      query.$or = orConditions
+      if (query.$and) {
+        query.$and.push({ $or: orConditions })
+      } else {
+        query.$and = [{ $or: orConditions }]
+      }
     }
 
     const skip = (page - 1) * limit

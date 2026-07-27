@@ -79,7 +79,7 @@ const actionColor = (action: string) => {
       <div class="glass-card p-4 flex flex-wrap gap-3">
         <div class="relative flex-1 min-w-[200px]">
           <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #94a3b8; z-index: 1;" />
-          <input v-model="search" type="text" class="form-input search-input" placeholder="Search by user, action, module, or details..." />
+          <input v-model="search" type="text" class="form-input search-input" placeholder="Search by user, action, module, IP address, browser..." />
         </div>
         <select v-model="moduleFilter" class="form-input filter-dropdown w-48">
           <option value="">All Modules</option>
@@ -102,7 +102,8 @@ const actionColor = (action: string) => {
         </div>
         <div v-else-if="!logs.length" class="p-16 text-center">
           <UIcon name="i-heroicons-clipboard-document-list" class="w-12 h-12 text-slate-700 mx-auto mb-3" />
-          <p class="text-slate-400">No audit logs found</p>
+          <p class="text-slate-400 font-medium">No audit logs found.</p>
+          <p v-if="search" class="text-slate-500 text-xs mt-1">Try searching using a different keyword.</p>
         </div>
         <div v-else>
           <div class="overflow-x-auto">

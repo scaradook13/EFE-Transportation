@@ -12,7 +12,8 @@ export default defineEventHandler(async (event) => {
     driver: query.driver as string | undefined,
     taxiUnit: query.taxiUnit as string | undefined,
     dateFrom: query.dateFrom as string | undefined,
-    dateTo: query.dateTo as string | undefined
+    dateTo: query.dateTo as string | undefined,
+    search: query.search as string | undefined
   }
 
   const result = await assignmentRepository.findAll(filters, page, limit)
