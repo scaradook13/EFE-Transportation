@@ -2,7 +2,7 @@
 import type { User } from '~/types'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
-useHead({ title: 'Settings — EFE Taxi Dispatch System' })
+useHead({ title: 'Users — EFE Taxi Dispatch System' })
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -82,8 +82,8 @@ const roleColor = (role: string) => {
     <div class="p-6 space-y-5 animate-fadeIn">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-white">User Management</h1>
-          <p class="text-sm text-slate-400 mt-0.5">Manage system users and their roles</p>
+          <h1 class="text-2xl font-bold text-white">Users</h1>
+          <p class="text-sm text-slate-400 mt-0.5">Manage system users and access roles</p>
         </div>
         <button class="btn-primary" @click="openCreate">
           <UIcon name="i-heroicons-plus" class="w-4 h-4" /> Add User

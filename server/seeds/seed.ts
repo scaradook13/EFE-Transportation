@@ -187,24 +187,6 @@ async function seed() {
   await DriverAssignment.insertMany(assignmentsData)
   console.log(`📋 Created ${assignmentsData.length} sample assignments`)
 
-  // Create sample notifications
-  const NotificationSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    message: { type: String, required: true },
-    type: { type: String, enum: ['info', 'success', 'warning', 'error'], default: 'info' },
-    isRead: { type: Boolean, default: false },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-  }, { timestamps: { createdAt: true, updatedAt: false } })
-
-  const Notification = mongoose.models.Notification || mongoose.model('Notification', NotificationSchema)
-
-  await Notification.insertMany([
-    { title: 'Welcome to EFE Taxi Dispatch System', message: 'System is ready. Start issuing taxis to drivers!', type: 'success', isRead: false, user: adminUser._id },
-    { title: 'License Expiry Alert', message: 'Driver DRV-0002 license expires in 30 days', type: 'warning', isRead: false, user: adminUser._id }
-  ])
-
-  console.log('🔔 Created sample notifications')
-
   console.log('\n✅ Seed completed successfully!')
   console.log('\n📋 Login Credentials:')
   console.log('   Admin      → username: admin        | password: Admin@123')

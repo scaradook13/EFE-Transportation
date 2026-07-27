@@ -12,7 +12,8 @@ export default defineEventHandler(async (event) => {
     user: query.user as string | undefined,
     module: query.module as string | undefined,
     dateFrom: query.dateFrom as string | undefined,
-    dateTo: query.dateTo as string | undefined
+    dateTo: query.dateTo as string | undefined,
+    search: query.search as string | undefined
   }
 
   const result = await auditLogRepository.findAll(filters, page, limit)

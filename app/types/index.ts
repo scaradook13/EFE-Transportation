@@ -123,19 +123,6 @@ export interface UpdateDispatchPayload {
   remarks?: string
 }
 
-// ==================== Notification Types ====================
-export type NotificationType = 'info' | 'success' | 'warning' | 'error'
-
-export interface Notification {
-  _id: string
-  title: string
-  message: string
-  type: NotificationType
-  isRead: boolean
-  user: string
-  createdAt: string
-}
-
 // ==================== Audit Log Types ====================
 export interface AuditLog {
   _id: string

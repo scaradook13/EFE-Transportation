@@ -37,7 +37,7 @@ const loadUnits = () => {
 }
 
 onMounted(loadUnits)
-watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadUnits() }, 400))
+watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadUnits() }, 300))
 watch(page, loadUnits)
 
 const openCreate = () => { resetForm(); showModal.value = true }
@@ -75,8 +75,25 @@ const handleDelete = async () => {
 
 const statusClass = (status: string) => {
   if (status === 'Available') return 'badge-available'
-  if (status === 'In Use') return 'badge-active'
+  if (status === 'In Use') return 'badge-completed'
   return 'badge-maintenance'
+}
+
+const getTaxiColorHex = (colorName: string) => {
+  const normalized = (colorName || '').toLowerCase().trim();
+  switch (normalized) {
+    case 'green': return '#22c55e';
+    case 'blue': return '#3b82f6';
+    case 'red': return '#ef4444';
+    case 'white': return '#ffffff';
+    case 'black': return '#000000';
+    case 'yellow': return '#eab308';
+    case 'silver':
+    case 'gray': return '#9ca3af';
+    case 'orange': return '#f97316';
+    case 'purple': return '#a855f7';
+    default: return '#f9a825';
+  }
 }
 </script>
 
@@ -94,12 +111,12 @@ const statusClass = (status: string) => {
       </div>
 
       <!-- Filters -->
-      <div class="glass-card p-4 flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-1">
-          <UIcon name="i-heroicons-magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input v-model="search" type="text" class="form-input pl-9" placeholder="Search by number, plate, brand..." />
+      <div class="glass-card p-4 flex flex-col md:flex-row gap-4">
+        <div class="relative w-full md:w-[65%] lg:w-[75%]">
+          <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #94a3b8; z-index: 1;" />
+          <input v-model="search" type="text" class="form-input search-input w-full" placeholder="Search by number, plate, brand..." />
         </div>
-        <select v-model="statusFilter" class="form-input w-full sm:w-48">
+        <select v-model="statusFilter" class="form-input filter-dropdown w-full md:w-[35%] lg:w-[25%]">
           <option value="">All Status</option>
           <option value="Available">Available</option>
           <option value="In Use">In Use</option>
@@ -113,7 +130,7 @@ const statusClass = (status: string) => {
           <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 text-green-500 animate-spin mx-auto" />
         </div>
         <div v-else-if="!taxiStore.taxiUnits.length" class="p-16 text-center">
-          <UIcon name="i-heroicons-truck" class="w-12 h-12 text-slate-700 mx-auto mb-3" />
+          <UIcon name="i-lucide-car-taxi-front" class="w-12 h-12 text-slate-700 mx-auto mb-3" />
           <p class="text-slate-400 font-medium">No taxi units found</p>
         </div>
         <div v-else>
@@ -135,7 +152,7 @@ const statusClass = (status: string) => {
                   <td>
                     <div class="flex items-center gap-2.5">
                       <div class="w-8 h-8 rounded-lg bg-yellow-900/20 border border-yellow-500/20 flex items-center justify-center">
-                        <UIcon name="i-heroicons-truck" class="w-4 h-4 text-yellow-400" />
+                        <UIcon name="i-lucide-car-taxi-front" class="w-4 h-4 text-yellow-400" />
                       </div>
                       <span class="font-bold text-white">{{ unit.taxiNumber }}</span>
                     </div>
@@ -147,7 +164,13 @@ const statusClass = (status: string) => {
                   <td class="text-slate-400">{{ unit.year }}</td>
                   <td>
                     <div class="flex items-center gap-2">
-                      <div class="w-3 h-3 rounded-full border border-white/20" style="background: #f9a825;" />
+                      <div 
+                        class="w-3 h-3 rounded-full border" 
+                        :style="{ 
+                          background: getTaxiColorHex(unit.color), 
+                          borderColor: getTaxiColorHex(unit.color) === '#ffffff' ? '#cbd5e1' : 'rgba(255,255,255,0.2)' 
+                        }" 
+                      />
                       <span class="text-slate-300 text-sm">{{ unit.color }}</span>
                     </div>
                   </td>
@@ -220,8 +243,17 @@ const statusClass = (status: string) => {
                   <input v-model.number="form.year" type="number" class="form-input" required :min="1990" :max="new Date().getFullYear() + 1" />
                 </div>
                 <div>
-                  <label class="form-label">Color *</label>
-                  <input v-model="form.color" type="text" class="form-input" required placeholder="Yellow" />
+                  <label class="form-label mb-1 block">Color *</label>
+                  <div class="relative">
+                    <input v-model="form.color" type="text" class="form-input pl-10" required placeholder="Yellow" />
+                    <div 
+                      class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border shadow-sm" 
+                      :style="{ 
+                        background: getTaxiColorHex(form.color), 
+                        borderColor: getTaxiColorHex(form.color) === '#ffffff' ? '#cbd5e1' : 'rgba(255,255,255,0.2)' 
+                      }" 
+                    />
+                  </div>
                 </div>
                 <div class="col-span-2">
                   <label class="form-label">Status</label>

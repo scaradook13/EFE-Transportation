@@ -1,7 +1,7 @@
 import { assignmentRepository } from '../../../../repositories/assignmentRepository'
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event)
+  requireRole(event, 'admin', 'dispatcher')
   await connectDB()
 
   const taxiId = getRouterParam(event, 'taxiId')

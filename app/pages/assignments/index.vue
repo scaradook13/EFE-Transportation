@@ -27,7 +27,7 @@ const statusFilter = ref('')
 const availableDrivers = ref<{ _id: string; fullName: string; driverId: string }[]>([])
 const availableTaxis = ref<{ _id: string; taxiNumber: string; plateNumber: string; brand: string; model: string }[]>([])
 
-const canIssue = computed(() => ['admin', 'dispatcher'].includes(authStore.user?.role || ''))
+const canIssue = computed(() => authStore.user?.role === 'dispatcher')
 
 const loadData = async () => {
   await assignmentStore.fetchActive()
@@ -147,7 +147,7 @@ const elapsed = (timeIn: string) => {
         </div>
         <div class="stat-card">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style="background: rgba(249,168,37,0.12);">
-            <UIcon name="i-heroicons-truck" class="w-5 h-5" style="color: #f9a825;" />
+            <UIcon name="i-lucide-car-taxi-front" class="w-5 h-5" style="color: #f9a825;" />
           </div>
           <div class="text-2xl font-bold text-white">{{ assignmentStore.activeAssignments.length }}</div>
           <div class="text-xs text-slate-400 mt-1">Taxis In Use</div>
@@ -189,7 +189,7 @@ const elapsed = (timeIn: string) => {
           <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 text-green-500 animate-spin mx-auto" />
         </div>
         <div v-else-if="!assignmentStore.activeAssignments.length" class="p-12 text-center">
-          <UIcon name="i-heroicons-truck" class="w-12 h-12 text-slate-700 mx-auto mb-3" />
+          <UIcon name="i-lucide-car-taxi-front" class="w-12 h-12 text-slate-700 mx-auto mb-3" />
           <p class="text-slate-400 font-medium">No active assignments</p>
           <p class="text-slate-600 text-sm mt-1">Issue a taxi to get started</p>
         </div>
@@ -203,6 +203,7 @@ const elapsed = (timeIn: string) => {
                 <th>Issued By</th>
                 <th>Time In</th>
                 <th>Elapsed</th>
+                <th>Notes</th>
                 <th v-if="canIssue">Action</th>
               </tr>
             </thead>
@@ -222,6 +223,7 @@ const elapsed = (timeIn: string) => {
                 <td>
                   <span class="text-xs font-mono" style="color: #f9a825;">{{ elapsed(a.timeIn) }}</span>
                 </td>
+                <td class="text-slate-400 text-xs">{{ a.remarks || '—' }}</td>
                 <td v-if="canIssue">
                   <button
                     class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
@@ -272,6 +274,7 @@ const elapsed = (timeIn: string) => {
                   <th>Time In</th>
                   <th>Time Out</th>
                   <th>Hours</th>
+                  <th>Notes</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -290,6 +293,7 @@ const elapsed = (timeIn: string) => {
                   <td class="text-xs font-mono" :style="{ color: a.totalHours ? '#f9a825' : '#64748b' }">
                     {{ formatDuration(a.totalMinutes) }}
                   </td>
+                  <td class="text-slate-400 text-xs">{{ a.remarks || '—' }}</td>
                   <td>
                     <span :class="[
                       'px-2 py-0.5 rounded-full text-xs font-medium',
@@ -326,7 +330,7 @@ const elapsed = (timeIn: string) => {
           <div class="relative glass-card p-6 max-w-md w-full animate-fadeIn" style="background: rgba(17,24,39,0.97);">
             <div class="flex items-center gap-3 mb-6">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(34,197,94,0.15);">
-                <UIcon name="i-heroicons-truck" class="w-5 h-5 text-green-400" />
+                <UIcon name="i-lucide-car-taxi-front" class="w-5 h-5 text-green-400" />
               </div>
               <div>
                 <h3 class="text-lg font-bold text-white">Issue Taxi</h3>
@@ -358,7 +362,7 @@ const elapsed = (timeIn: string) => {
               </div>
 
               <div>
-                <label class="form-label">Remarks <span class="text-slate-600">(optional)</span></label>
+                <label class="form-label">Notes <span class="text-slate-600">(optional)</span></label>
                 <textarea v-model="issueForm.remarks" class="form-input h-20 resize-none" placeholder="Add any notes..." />
               </div>
 
@@ -417,7 +421,7 @@ const elapsed = (timeIn: string) => {
             </div>
 
             <div class="mb-5">
-              <label class="form-label">Remarks <span class="text-slate-600">(optional)</span></label>
+              <label class="form-label">Notes <span class="text-slate-600">(optional)</span></label>
               <textarea v-model="returnRemarks" class="form-input h-20 resize-none" placeholder="Add any notes..." />
             </div>
 

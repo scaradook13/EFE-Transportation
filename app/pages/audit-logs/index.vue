@@ -17,8 +17,9 @@ const pagination = ref<{ total: number; page: number; limit: number; pages: numb
 const moduleFilter = ref('')
 const dateFrom = ref('')
 const dateTo = ref('')
+const search = ref('')
 
-const modules = ['Auth', 'Drivers', 'Taxi Units', 'Dispatches']
+const modules = ['Auth', 'Drivers', 'Taxi Units', 'Taxi Assignment']
 
 const loadLogs = async () => {
   loading.value = true
@@ -27,6 +28,7 @@ const loadLogs = async () => {
     if (moduleFilter.value) params.module = moduleFilter.value
     if (dateFrom.value) params.dateFrom = dateFrom.value
     if (dateTo.value) params.dateTo = dateTo.value
+    if (search.value) params.search = search.value
 
     const response = await $fetch<{
       data: typeof logs.value
@@ -44,6 +46,7 @@ const loadLogs = async () => {
 
 onMounted(loadLogs)
 watch([moduleFilter, dateFrom, dateTo], () => { page.value = 1; loadLogs() })
+watch(search, useDebounceFn(() => { page.value = 1; loadLogs() }, 300))
 watch(page, loadLogs)
 
 const formatDateTime = (d: string) => new Date(d).toLocaleString('en-PH', {
@@ -74,16 +77,20 @@ const actionColor = (action: string) => {
 
       <!-- Filters -->
       <div class="glass-card p-4 flex flex-wrap gap-3">
-        <select v-model="moduleFilter" class="form-input w-48">
+        <div class="relative flex-1 min-w-[200px]">
+          <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #94a3b8; z-index: 1;" />
+          <input v-model="search" type="text" class="form-input search-input" placeholder="Search by user, action, module, or details..." />
+        </div>
+        <select v-model="moduleFilter" class="form-input filter-dropdown w-48">
           <option value="">All Modules</option>
           <option v-for="m in modules" :key="m" :value="m">{{ m }}</option>
         </select>
         <div class="flex items-center gap-2">
-          <input v-model="dateFrom" type="date" class="form-input w-40" placeholder="From date" />
+          <input v-model="dateFrom" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="From date" />
           <span class="text-slate-500 text-sm">to</span>
-          <input v-model="dateTo" type="date" class="form-input w-40" placeholder="To date" />
+          <input v-model="dateTo" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="To date" />
         </div>
-        <button class="btn-secondary px-3 py-2 text-xs" @click="() => { moduleFilter = ''; dateFrom = ''; dateTo = ''; loadLogs() }">
+        <button class="btn-secondary px-3 py-2 text-xs" @click="() => { search = ''; moduleFilter = ''; dateFrom = ''; dateTo = ''; loadLogs() }">
           <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" /> Clear
         </button>
       </div>

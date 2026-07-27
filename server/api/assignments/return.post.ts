@@ -7,7 +7,11 @@ const returnSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const user = requireRole(event, 'admin', 'dispatcher')
+  const user = requireAuth(event)
+  if (user.role !== 'dispatcher') {
+    setResponseStatus(event, 403)
+    return { success: false, message: 'Only dispatchers are authorized to manage taxi assignments.' }
+  }
   await connectDB()
 
   const body = await readBody(event)

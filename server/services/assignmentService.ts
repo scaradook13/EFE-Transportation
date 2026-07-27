@@ -24,6 +24,9 @@ export const assignmentService = {
     if (driver.employmentStatus === 'Inactive') {
       throw createError({ statusCode: 403, message: 'Driver is inactive and cannot be assigned a taxi' })
     }
+    if (driver.employmentStatus === 'Expired License') {
+      throw createError({ statusCode: 403, message: 'Driver has an expired license and cannot be assigned a taxi' })
+    }
 
     const existingDriverAssignment = await assignmentRepository.findActiveByDriver(dto.driverId)
     if (existingDriverAssignment) {

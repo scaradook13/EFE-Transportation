@@ -5,6 +5,7 @@ export interface AuditLogFilters {
   module?: string
   dateFrom?: string
   dateTo?: string
+  search?: string
 }
 
 export const auditLogRepository = {
@@ -17,6 +18,25 @@ export const auditLogRepository = {
       query.createdAt = {}
       if (filters.dateFrom) (query.createdAt as Record<string, unknown>).$gte = new Date(filters.dateFrom)
       if (filters.dateTo) (query.createdAt as Record<string, unknown>).$lte = new Date(filters.dateTo)
+    }
+
+    if (filters.search) {
+      const User = mongoose.model('User')
+      const users = await User.find({ fullName: { $regex: filters.search, $options: 'i' } }).select('_id')
+      const userIds = users.map((u: any) => u._id)
+      
+      const searchRegex = { $regex: filters.search, $options: 'i' }
+      const orConditions: any[] = [
+        { action: searchRegex },
+        { module: searchRegex },
+        { details: searchRegex }
+      ]
+      
+      if (userIds.length > 0) {
+        orConditions.push({ user: { $in: userIds } })
+      }
+      
+      query.$or = orConditions
     }
 
     const skip = (page - 1) * limit

@@ -42,7 +42,7 @@ const loadDrivers = () => {
 
 onMounted(loadDrivers)
 
-watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadDrivers() }, 400))
+watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadDrivers() }, 300))
 watch(page, loadDrivers)
 
 const openCreate = () => { resetForm(); showModal.value = true }
@@ -138,15 +138,16 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
       </div>
 
       <!-- Filters -->
-      <div class="glass-card p-4 flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-1">
-          <UIcon name="i-heroicons-magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input v-model="search" type="text" class="form-input pl-9" placeholder="Search by name, ID, license..." />
+      <div class="glass-card p-4 flex flex-col md:flex-row gap-4">
+        <div class="relative w-full md:w-[65%] lg:w-[75%]">
+          <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #94a3b8; z-index: 1;" />
+          <input v-model="search" type="text" class="form-input search-input w-full" placeholder="Search by name, ID, license..." />
         </div>
-        <select v-model="statusFilter" class="form-input w-full sm:w-48">
+        <select v-model="statusFilter" class="form-input filter-dropdown w-full md:w-[35%] lg:w-[25%]">
           <option value="">All Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
+          <option value="Expired License">Expired License</option>
         </select>
       </div>
 
@@ -210,13 +211,17 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                   <td>
                     <span :class="[
                       'px-2 py-0.5 rounded-full text-xs font-medium',
-                      (driver as any).operationalStatus === 'Active' ? 'badge-active' : 'badge-available'
+                      (driver as any).operationalStatus === 'Active' ? 'badge-active' :
+                      (driver as any).operationalStatus === 'Not Available' ? 'badge-cancelled' : 'badge-available'
                     ]">
-                      {{ (driver as any).operationalStatus === 'Active' ? '🟢 On Duty' : '⚪ Available' }}
+                      {{ (driver as any).operationalStatus === 'Active' ? 'On Duty' : 
+                         (driver as any).operationalStatus === 'Not Available' ? 'Not Available' : 'Available' }}
                     </span>
                   </td>
                   <td>
-                    <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', driver.employmentStatus === 'Active' ? 'badge-completed' : 'badge-cancelled']">
+                    <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', 
+                      driver.employmentStatus === 'Active' ? 'badge-completed' : 
+                      driver.employmentStatus === 'Expired License' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'badge-cancelled']">
                       {{ driver.employmentStatus }}
                     </span>
                   </td>

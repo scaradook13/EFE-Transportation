@@ -1,28 +1,21 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { useNotificationStore } from '~/stores/notifications'
 
 definePageMeta({ middleware: 'auth' })
 
 const authStore = useAuthStore()
-const notificationStore = useNotificationStore()
 const route = useRoute()
 const router = useRouter()
 const isMobileMenuOpen = ref(false)
-
-onMounted(async () => {
-  await notificationStore.fetchAll()
-})
 
 const navigation = computed(() => {
   const items = [
     { name: 'Dashboard', href: '/', icon: 'i-heroicons-squares-2x2', roles: ['admin', 'dispatcher', 'hr'] },
     { name: 'Taxi Assignment', href: '/assignments', icon: 'i-heroicons-key', roles: ['admin', 'dispatcher'] },
     { name: 'Drivers', href: '/drivers', icon: 'i-heroicons-user-group', roles: ['admin', 'dispatcher', 'hr'] },
-    { name: 'Taxi Fleet', href: '/taxi-units', icon: 'i-heroicons-truck', roles: ['admin', 'dispatcher', 'hr'] },
+    { name: 'Taxi Fleet', href: '/taxi-units', icon: 'i-lucide-car-taxi-front', roles: ['admin', 'dispatcher', 'hr'] },
     { name: 'Users', href: '/users', icon: 'i-heroicons-users', roles: ['admin'] },
-    { name: 'Audit Logs', href: '/audit-logs', icon: 'i-heroicons-clipboard-document-list', roles: ['admin'] },
-    { name: 'Settings', href: '/settings', icon: 'i-heroicons-cog-6-tooth', roles: ['admin'] }
+    { name: 'Audit Logs', href: '/audit-logs', icon: 'i-heroicons-clipboard-document-list', roles: ['admin'] }
   ]
   return items.filter(item => item.roles.includes(authStore.user?.role || ''))
 })
@@ -111,16 +104,6 @@ const logout = async () => {
 
         <!-- Right actions -->
         <div class="flex items-center gap-3 ml-auto">
-          <!-- Notifications -->
-          <NuxtLink to="/notifications" class="relative p-2 rounded-lg hover:bg-white/5 transition-colors">
-            <UIcon name="i-heroicons-bell" class="w-5 h-5 text-slate-400" />
-            <span
-              v-if="notificationStore.unreadCount > 0"
-              class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
-            >
-              {{ notificationStore.unreadCount > 9 ? '9+' : notificationStore.unreadCount }}
-            </span>
-          </NuxtLink>
         </div>
       </header>
 

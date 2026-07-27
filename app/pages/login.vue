@@ -39,19 +39,19 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="w-full max-w-md mx-auto px-4 py-8 animate-fadeIn">
+  <div class="min-h-screen flex items-center justify-center p-4 animate-fadeIn">
     <!-- Card -->
-    <div class="glass-card p-8" style="background: rgba(17,24,39,0.9); border: 1px solid rgba(255,255,255,0.08);">
+    <div class="glass-card p-8 w-full max-w-md" style="background: rgba(17,24,39,0.9); border: 1px solid rgba(255,255,255,0.08);">
       <!-- Logo & Branding -->
       <div class="text-center mb-8">
         <div class="flex justify-center mb-4">
-          <div class="relative">
-            <img src="/logo.png" alt="R&T Group of Taxi" class="w-20 h-20 rounded-full object-cover shadow-lg" style="box-shadow: 0 0 30px rgba(34,197,94,0.3);" />
+          <div class="relative inline-block">
+            <img src="/logo.png" alt="EFE Group of Taxi" class="w-20 h-20 rounded-full object-cover shadow-lg" style="box-shadow: 0 0 30px rgba(34,197,94,0.3);" />
             <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-gray-900 animate-pulse-green" />
           </div>
         </div>
         <h1 class="text-2xl font-bold text-white mb-1">EFE Taxi Dispatch</h1>
-        <p class="text-sm font-medium" style="color: #f9a825;">R&T Group of Taxi</p>
+        <p class="text-sm font-medium" style="color: #f9a825;">EFE Group of Taxi</p>
         <p class="text-xs text-slate-500 mt-1">Dispatch Management System</p>
       </div>
 
@@ -73,16 +73,11 @@ const handleLogin = async () => {
         <div>
           <label class="form-label" for="username">Username</label>
           <div class="relative">
-            <UIcon
-              name="i-heroicons-user"
-              class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-              style="color: #4b5563;"
-            />
             <input
               id="username"
               v-model="form.username"
               type="text"
-              class="form-input pl-10"
+              class="form-input"
               placeholder="Enter your username"
               autocomplete="username"
               :disabled="loading"
@@ -94,16 +89,11 @@ const handleLogin = async () => {
         <div>
           <label class="form-label" for="password">Password</label>
           <div class="relative">
-            <UIcon
-              name="i-heroicons-lock-closed"
-              class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-              style="color: #4b5563;"
-            />
             <input
               id="password"
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
-              class="form-input pl-10 pr-10"
+              class="form-input pr-10"
               placeholder="Enter your password"
               autocomplete="current-password"
               :disabled="loading"
@@ -135,7 +125,7 @@ const handleLogin = async () => {
 
       <!-- Footer -->
       <p class="text-center text-xs text-slate-600 mt-6">
-        EFE Taxi Dispatch System &copy; {{ new Date().getFullYear() }} R&T Group of Taxi
+        EFE Taxi Dispatch System &copy; {{ new Date().getFullYear() }} EFE Group of Taxi
       </p>
     </div>
   </div>

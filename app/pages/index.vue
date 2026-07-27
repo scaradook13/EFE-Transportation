@@ -15,7 +15,7 @@ const statCards = computed(() => {
   if (!s) return []
   return [
     { label: 'Drivers Available', value: s.availableDrivers ?? 0, sub: `${s.activeDrivers ?? 0} On Duty`, icon: 'i-heroicons-user-group', color: '#4ade80', bg: 'rgba(34,197,94,0.1)' },
-    { label: 'Taxis Available', value: s.availableTaxis ?? 0, sub: `${s.inUseTaxis ?? 0} In Use`, icon: 'i-heroicons-truck', color: '#f9a825', bg: 'rgba(249,168,37,0.1)' },
+    { label: 'Taxis Available', value: s.availableTaxis ?? 0, sub: `${s.inUseTaxis ?? 0} In Use`, icon: 'i-lucide-car-taxi-front', color: '#f9a825', bg: 'rgba(249,168,37,0.1)' },
     { label: "Today's Assignments", value: s.todayAssignments ?? 0, sub: `${s.todayReturned ?? 0} Returned`, icon: 'i-heroicons-key', color: '#60a5fa', bg: 'rgba(59,130,246,0.1)' },
     { label: 'Avg. Hours Worked', value: s.avgHours ? `${s.avgHours}h` : '—', sub: 'All completed shifts', icon: 'i-heroicons-clock', color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' }
   ]
