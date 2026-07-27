@@ -16,14 +16,31 @@ export default defineEventHandler(async (event) => {
   const method = getMethod(event)
 
   if (method === 'PUT' || method === 'PATCH') {
+    const targetUser = await userRepository.findById(id)
+    if (!targetUser) throw createError({ statusCode: 404, message: 'User not found' })
+
+    const authUser = requireRole(event, 'admin')
+
+    if (targetUser.isPrimaryAdmin && targetUser._id.toString() !== authUser.userId) {
+      logAudit(event, authUser.userId, 'EDIT_USER_BLOCKED', 'User Management', `Attempted to edit primary admin: ${targetUser.username}`)
+      setResponseStatus(event, 403)
+      return { success: false, message: 'The Primary Administrator account is protected and cannot be edited.' }
+    }
+
     const body = await readBody(event)
     const parsed = updateUserSchema.safeParse(body)
     if (!parsed.success) {
       throw createError({ statusCode: 400, message: parsed.error.errors[0]?.message || 'Validation failed' })
     }
-    const user = await userRepository.update(id, parsed.data)
-    if (!user) throw createError({ statusCode: 404, message: 'User not found' })
-    return successResponse(user, 'User updated successfully')
+    const updatedUser = await userRepository.update(id, parsed.data)
+
+    if (targetUser.isPrimaryAdmin && targetUser._id.toString() === authUser.userId) {
+       logAudit(event, authUser.userId, 'EDIT_PRIMARY_ADMIN', 'User Management', `Primary admin updated own account`)
+    } else {
+       logAudit(event, authUser.userId, 'EDIT_USER', 'User Management', `Updated user: ${targetUser.username}`)
+    }
+
+    return successResponse(updatedUser, 'User updated successfully')
   }
 
   if (method === 'DELETE') {

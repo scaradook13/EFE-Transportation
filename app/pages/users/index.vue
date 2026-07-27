@@ -42,6 +42,10 @@ const openCreate = () => {
 }
 
 const openEdit = (user: User) => {
+  if (user.isPrimaryAdmin && user._id !== authStore.user?.userId) {
+    toast.add({ title: 'Error', description: 'You are not authorized to edit the Primary Administrator account.', color: 'error' })
+    return
+  }
   editingUser.value = user
   Object.assign(form, { username: user.username, password: '', fullName: user.fullName, role: user.role, isActive: user.isActive })
   showModal.value = true
@@ -67,6 +71,10 @@ const handleSubmit = async () => {
 }
 
 const toggleActive = async (user: User) => {
+  if (user.isPrimaryAdmin && user._id !== authStore.user?.userId) {
+    toast.add({ title: 'Error', description: 'You are not authorized to edit the Primary Administrator account.', color: 'error' })
+    return
+  }
   try {
     await $fetch(`/api/users/${user._id}`, { method: 'PUT', body: { isActive: !user.isActive } })
     toast.add({ title: `User ${user.isActive ? 'deactivated' : 'activated'}`, color: 'success' })
@@ -160,34 +168,41 @@ const roleColor = (role: string) => {
                 <td class="text-slate-400 text-xs">{{ new Date(user.createdAt).toLocaleDateString('en-PH') }}</td>
                 <td>
                   <div class="flex items-center gap-2">
-                    <button class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Edit" @click="openEdit(user)">
-                      <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
-                    </button>
-                    <button
-                      v-if="user._id !== authStore.user?.userId"
-                      class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                      :title="user.isActive ? 'Deactivate' : 'Activate'"
-                      @click="toggleActive(user)"
-                    >
-                      <UIcon
-                        :name="user.isActive ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                        class="w-4 h-4"
-                        :class="user.isActive ? 'text-yellow-400' : 'text-green-400'"
-                      />
-                    </button>
-                    <template v-if="user.isPrimaryAdmin">
-                      <div class="p-1.5 cursor-not-allowed group relative" title="Primary Administrator cannot be deleted.">
-                        <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-amber-500" />
+                    <template v-if="user.isPrimaryAdmin && user._id !== authStore.user?.userId">
+                      <div class="p-1.5 cursor-not-allowed group relative" title="Primary Administrator account is protected and cannot be edited.">
+                        <UIcon name="i-heroicons-lock-closed" class="w-4 h-4 text-amber-500" />
                       </div>
                     </template>
-                    <template v-else-if="user._id !== authStore.user?.userId">
-                      <button
-                        class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-                        title="Delete User"
-                        @click="confirmDelete(user)"
-                      >
-                        <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400 hover:text-red-300" />
+                    <template v-else>
+                      <button class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Edit" @click="openEdit(user)">
+                        <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
                       </button>
+                      <button
+                        v-if="user._id !== authStore.user?.userId"
+                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                        :title="user.isActive ? 'Deactivate' : 'Activate'"
+                        @click="toggleActive(user)"
+                      >
+                        <UIcon
+                          :name="user.isActive ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                          class="w-4 h-4"
+                          :class="user.isActive ? 'text-yellow-400' : 'text-green-400'"
+                        />
+                      </button>
+                      <template v-if="user.isPrimaryAdmin">
+                        <div class="p-1.5 cursor-not-allowed group relative" title="Primary Administrator cannot be deleted.">
+                          <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-amber-500" />
+                        </div>
+                      </template>
+                      <template v-else-if="user._id !== authStore.user?.userId">
+                        <button
+                          class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                          title="Delete User"
+                          @click="confirmDelete(user)"
+                        >
+                          <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400 hover:text-red-300" />
+                        </button>
+                      </template>
                     </template>
                   </div>
                 </td>
