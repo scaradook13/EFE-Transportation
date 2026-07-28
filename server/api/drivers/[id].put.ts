@@ -11,9 +11,32 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const parsed = await driverSchema.partial().parseAsync(body)
   
+    // Check for active assignment
+    const existingDriver = await driverService.getById(id)
+    if (existingDriver?.operationalStatus === 'Active') {
+      logAudit(event, authUser.userId, 'Attempted Edit Driver', 'Drivers', 'Blocked: Driver is currently on duty')
+      throw createError({
+        statusCode: 409,
+        message: 'This driver is currently on duty and cannot be edited until the assigned taxi has been returned.',
+      })
+    }
+
+    const oldEmploymentStatus = existingDriver?.employmentStatus
+    const oldOpStatus = existingDriver?.operationalStatus
+
     const driver = await driverService.update(id, { ...parsed, updatedBy: authUser.userId })
 
-  logAudit(event, authUser.userId, 'UPDATE_DRIVER', 'Drivers', `Updated driver: ${driver?.fullName}`)
+    if (parsed.employmentStatus === 'Active' && oldEmploymentStatus !== 'Active' && oldOpStatus !== 'Active') {
+      logAudit(
+        event, 
+        authUser.userId, 
+        'Driver Employment Status Updated', 
+        'Drivers', 
+        `Employment Status: ${oldEmploymentStatus} → Active | Duty Status: ${oldOpStatus} → Available (Automatic)`
+      )
+    } else {
+      logAudit(event, authUser.userId, 'UPDATE_DRIVER', 'Drivers', `Updated driver: ${driver?.fullName}`)
+    }
 
     return successResponse(driver, 'Driver updated successfully')
   } catch (err) {

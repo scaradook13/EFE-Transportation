@@ -45,8 +45,17 @@ export const driverService = {
 
   async update(id: string, data: UpdateDriverDto) {
     await connectDB()
+    const existingDriver = await driverRepository.findById(id)
+    if (!existingDriver) {
+      throw createError({ statusCode: 404, message: 'Driver not found' })
+    }
     
-    if (data.employmentStatus === 'Inactive' || data.employmentStatus === 'Expired License') {
+    if (data.employmentStatus === 'Active') {
+      // Check if driver has no active assignment
+      if (existingDriver.operationalStatus !== 'Active') {
+        data.operationalStatus = 'Available'
+      }
+    } else if (data.employmentStatus === 'Inactive' || data.employmentStatus === 'Expired License') {
       data.operationalStatus = 'Not Available'
     } else if (data.licenseExpiration) {
       const today = new Date()

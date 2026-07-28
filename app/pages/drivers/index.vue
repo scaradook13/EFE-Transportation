@@ -58,6 +58,10 @@ watch(page, loadDrivers)
 
 const openCreate = () => { resetForm(); formError.value = ''; showModal.value = true }
 const openEdit = (driver: Driver) => {
+  if ((driver as any).operationalStatus === 'Active') {
+    toast.add({ title: 'This driver cannot be edited while on duty.', color: 'error' })
+    return
+  }
   editingDriver.value = driver
   formError.value = ''
   clearErrors()
@@ -256,9 +260,11 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                       <NuxtLink :to="`/drivers/${driver._id}`" class="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
                         <UIcon name="i-heroicons-eye" class="w-4 h-4 text-slate-400" />
                       </NuxtLink>
-                      <button v-if="authStore.canManageDrivers" class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" @click="openEdit(driver)">
-                        <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
-                      </button>
+                      <div v-if="authStore.canManageDrivers" :title="(driver as any).operationalStatus === 'Active' ? 'This driver is currently on duty and cannot be edited until the assigned taxi has been returned.' : undefined">
+                        <button class="p-1.5 rounded-lg transition-colors" :class="(driver as any).operationalStatus === 'Active' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="(driver as any).operationalStatus === 'Active'" @click="openEdit(driver)">
+                          <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
+                        </button>
+                      </div>
                       <div v-if="authStore.canManageDrivers" :title="(driver as any).operationalStatus === 'Active' ? 'This driver is currently on duty and cannot be deleted.' : undefined">
                         <button class="p-1.5 rounded-lg transition-colors" :class="(driver as any).operationalStatus === 'Active' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="(driver as any).operationalStatus === 'Active'" @click="confirmDelete(driver)">
                           <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />

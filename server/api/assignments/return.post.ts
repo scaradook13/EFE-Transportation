@@ -1,6 +1,7 @@
 import { assignmentService } from '../../services/assignmentService'
 import { assignmentReturnSchema } from '~~/shared/utils/validations'
 import { handleZodError } from '~~/server/utils/response'
+import { z } from 'zod'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
     user.userId,
     'RETURN_TAXI',
     'Taxi Assignment',
-    `Taxi returned — Assignment ${parsed.data.assignmentId} | Hours worked: ${result.totalHours}h`
+    `Taxi returned — Assignment ${parsed.assignmentId} | Hours worked: ${result.totalHours}h`
   )
 
     return successResponse(result, 'Taxi returned successfully')

@@ -49,6 +49,10 @@ watch(page, loadUnits)
 
 const openCreate = () => { resetForm(); formError.value = ''; showModal.value = true }
 const openEdit = (unit: TaxiUnit) => {
+  if (unit.status === 'In Use') {
+    toast.add({ title: 'This taxi cannot be edited while it is in use.', color: 'error' })
+    return
+  }
   editingUnit.value = unit
   formError.value = ''
   clearErrors()
@@ -194,9 +198,11 @@ const getTaxiColorHex = (colorName: string) => {
                   </td>
                   <td v-if="authStore.canManageTaxis">
                     <div class="flex items-center gap-2">
-                      <button class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" @click="openEdit(unit)">
-                        <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
-                      </button>
+                      <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be edited until it has been returned.' : undefined">
+                        <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="unit.status === 'In Use'" @click="openEdit(unit)">
+                          <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
+                        </button>
+                      </div>
                       <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be deleted.' : undefined">
                         <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="unit.status === 'In Use'" @click="confirmDelete(unit)">
                           <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />

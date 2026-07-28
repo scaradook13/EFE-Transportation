@@ -12,6 +12,16 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const parsed = await taxiUnitSchema.partial().parseAsync(body)
   
+    // Check for active assignment
+    const existingTaxi = await taxiUnitService.getById(id)
+    if (existingTaxi?.status === 'In Use') {
+      logAudit(event, authUser.userId, 'Attempted Edit Taxi', 'Taxi Units', 'Blocked: Taxi is currently in use')
+      throw createError({
+        statusCode: 409,
+        message: 'This taxi is currently in use and cannot be edited until it has been returned.',
+      })
+    }
+  
     // Check uniqueness (ignoring self)
     const errors: Record<string, string> = {}
     if (parsed.taxiNumber) {
