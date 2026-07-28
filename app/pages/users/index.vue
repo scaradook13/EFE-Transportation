@@ -19,11 +19,18 @@ const formLoading = ref(false)
 const showDeleteModal = ref(false)
 const userToDelete = ref<User | null>(null)
 const deleteLoading = ref(false)
+const formError = ref('')
+
+import { userSchema, userEditSchema } from '~~/shared/utils/validations'
+import { useFormValidation } from '~/composables/useFormValidation'
 
 const form = reactive({
   username: '', password: '', fullName: '',
   role: 'dispatcher' as 'admin' | 'dispatcher' | 'hr', isActive: true
 })
+
+const activeSchema = computed(() => editingUser.value ? userEditSchema : userSchema)
+const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(activeSchema, form)
 
 const loadUsers = async () => {
   loading.value = true
@@ -35,9 +42,15 @@ const loadUsers = async () => {
 
 onMounted(loadUsers)
 
+const resetForm = () => {
+  Object.assign(form, { username: '', password: '', fullName: '', role: 'dispatcher', isActive: true })
+}
+
 const openCreate = () => {
   editingUser.value = null
-  Object.assign(form, { username: '', password: '', fullName: '', role: 'dispatcher', isActive: true })
+  resetForm()
+  formError.value = ''
+  clearErrors()
   showModal.value = true
 }
 
@@ -47,11 +60,16 @@ const openEdit = (user: User) => {
     return
   }
   editingUser.value = user
+  formError.value = ''
+  clearErrors()
   Object.assign(form, { username: user.username, password: '', fullName: user.fullName, role: user.role, isActive: user.isActive })
   showModal.value = true
 }
 
 const handleSubmit = async () => {
+  if (!validate()) return
+
+  formError.value = ''
   formLoading.value = true
   try {
     if (editingUser.value) {
@@ -66,7 +84,11 @@ const handleSubmit = async () => {
     showModal.value = false
     await loadUsers()
   } catch (err: unknown) {
-    toast.add({ title: 'Error', description: (err as { data?: { message?: string } })?.data?.message || 'Failed', color: 'error' })
+    formError.value = (err as any)?.data?.message || 'Failed to save user.'
+    if ((err as any)?.data?.data?.errors) {
+      setErrors((err as any).data.data.errors)
+    }
+    toast.add({ title: 'Error', description: formError.value, color: 'error' })
   } finally { formLoading.value = false }
 }
 
@@ -110,7 +132,6 @@ const roleColor = (role: string) => {
 </script>
 
 <template>
-  <NuxtLayout name="default">
     <div class="p-6 space-y-5 animate-fadeIn">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -226,25 +247,33 @@ const roleColor = (role: string) => {
               </button>
             </div>
             <form @submit.prevent="handleSubmit" class="space-y-4">
+              <div v-if="formError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p class="text-sm text-red-400 font-medium">{{ formError }}</p>
+              </div>
               <div>
                 <label class="form-label">Full Name *</label>
-                <input v-model="form.fullName" type="text" class="form-input" required />
+                <input v-model="form.fullName" @blur="touch('fullName')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.fullName }" required />
+                <p v-if="errors.fullName" class="mt-1 text-xs text-red-400">{{ errors.fullName }}</p>
               </div>
               <div>
                 <label class="form-label">Username *</label>
-                <input v-model="form.username" type="text" class="form-input" :disabled="!!editingUser" required />
+                <input v-model="form.username" @blur="touch('username')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.username }" :disabled="!!editingUser" required />
+                <p v-if="errors.username" class="mt-1 text-xs text-red-400">{{ errors.username }}</p>
               </div>
               <div>
                 <label class="form-label">{{ editingUser ? 'New Password (leave blank to keep)' : 'Password *' }}</label>
-                <input v-model="form.password" type="password" class="form-input" :required="!editingUser" placeholder="Min 6 characters" />
+                <input v-model="form.password" @blur="touch('password')" type="password" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.password }" :required="!editingUser" placeholder="Min 6 characters" />
+                <p v-if="errors.password" class="mt-1 text-xs text-red-400">{{ errors.password }}</p>
               </div>
               <div>
                 <label class="form-label">Role *</label>
-                <select v-model="form.role" class="form-input">
+                <select v-model="form.role" @blur="touch('role')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.role }" required>
                   <option value="admin">Admin</option>
                   <option value="dispatcher">Dispatcher</option>
                   <option value="hr">HR</option>
                 </select>
+                <p v-if="errors.role" class="mt-1 text-xs text-red-400">{{ errors.role }}</p>
               </div>
               <div class="flex items-center gap-3">
                 <input id="isActive" v-model="form.isActive" type="checkbox" class="w-4 h-4 rounded" />
@@ -292,7 +321,6 @@ const roleColor = (role: string) => {
         </div>
       </Transition>
     </Teleport>
-  </NuxtLayout>
 </template>
 
 <style scoped>

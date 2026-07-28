@@ -14,6 +14,11 @@ export interface CreateDriverDto {
   licenseNumber: string
   licenseExpiration: Date | string
   photo?: string | null
+  tinId?: string
+  sssId?: string
+  philhealthId?: string
+  pagibigId?: string
+  dateHired?: Date | string | null
   employmentStatus?: EmploymentStatus
   createdBy: string
 }
@@ -31,6 +36,11 @@ export interface UpdateDriverDto {
   licenseNumber?: string
   licenseExpiration?: Date | string
   photo?: string | null
+  tinId?: string
+  sssId?: string
+  philhealthId?: string
+  pagibigId?: string
+  dateHired?: Date | string | null
   employmentStatus?: EmploymentStatus
   updatedBy?: string
 }
@@ -52,7 +62,11 @@ export const driverRepository = {
         { fullName: { $regex: filters.search, $options: 'i' } },
         { driverId: { $regex: filters.search, $options: 'i' } },
         { licenseNumber: { $regex: filters.search, $options: 'i' } },
-        { contactNumber: { $regex: filters.search, $options: 'i' } }
+        { contactNumber: { $regex: filters.search, $options: 'i' } },
+        { tinId: { $regex: filters.search, $options: 'i' } },
+        { sssId: { $regex: filters.search, $options: 'i' } },
+        { philhealthId: { $regex: filters.search, $options: 'i' } },
+        { pagibigId: { $regex: filters.search, $options: 'i' } }
       ]
     }
 

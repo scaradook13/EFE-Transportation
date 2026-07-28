@@ -1,10 +1,6 @@
-import { z } from 'zod'
 import { assignmentService } from '../../services/assignmentService'
-
-const returnSchema = z.object({
-  assignmentId: z.string().min(1, 'Assignment ID is required'),
-  remarks: z.string().optional().default('')
-})
+import { assignmentReturnSchema } from '~~/shared/utils/validations'
+import { handleZodError } from '~~/server/utils/response'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -14,20 +10,15 @@ export default defineEventHandler(async (event) => {
   }
   await connectDB()
 
-  const body = await readBody(event)
-  const parsed = returnSchema.safeParse(body)
-
-  if (!parsed.success) {
-    throw createError({
-      statusCode: 422,
-      message: parsed.error.errors[0]?.message || 'Validation failed'
+  try {
+    const body = await readBody(event)
+    // The shared schema doesn't have assignmentId (it's internal to the frontend), so we merge it
+    const parsed = await assignmentReturnSchema.extend({ assignmentId: z.string().min(1) }).parseAsync(body)
+  
+    const result = await assignmentService.return({
+      assignmentId: parsed.assignmentId,
+      remarks: parsed.remarks
     })
-  }
-
-  const result = await assignmentService.return({
-    assignmentId: parsed.data.assignmentId,
-    remarks: parsed.data.remarks
-  })
 
   logAudit(
     event,
@@ -37,5 +28,8 @@ export default defineEventHandler(async (event) => {
     `Taxi returned — Assignment ${parsed.data.assignmentId} | Hours worked: ${result.totalHours}h`
   )
 
-  return successResponse(result, 'Taxi returned successfully')
+    return successResponse(result, 'Taxi returned successfully')
+  } catch (err) {
+    handleZodError(err)
+  }
 })

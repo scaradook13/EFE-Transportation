@@ -17,19 +17,30 @@ const showDeleteModal = ref(false)
 const editingDriver = ref<Driver | null>(null)
 const deletingDriver = ref<Driver | null>(null)
 const formLoading = ref(false)
+import { driverSchema } from '~~/shared/utils/validations'
+import { useFormValidation } from '~/composables/useFormValidation'
+
+const formError = ref('')
 
 const form = reactive<CreateDriverPayload>({
   fullName: '', address: '', contactNumber: '',
   birthDate: '', emergencyContact: { name: '', relationship: '', contactNumber: '' },
-  licenseNumber: '', licenseExpiration: '', photo: null, employmentStatus: 'Active'
+  dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null,
+  tinId: '', sssId: '', philhealthId: '', pagibigId: '',
+  employmentStatus: 'Active'
 })
+
+const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(driverSchema, form)
 
 const resetForm = () => {
   Object.assign(form, {
     fullName: '', address: '', contactNumber: '',
     birthDate: '', emergencyContact: { name: '', relationship: '', contactNumber: '' },
-    licenseNumber: '', licenseExpiration: '', photo: null, employmentStatus: 'Active'
+    dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null,
+    tinId: '', sssId: '', philhealthId: '', pagibigId: '',
+    employmentStatus: 'Active'
   })
+  clearErrors()
   editingDriver.value = null
 }
 
@@ -45,18 +56,25 @@ onMounted(loadDrivers)
 watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadDrivers() }, 300))
 watch(page, loadDrivers)
 
-const openCreate = () => { resetForm(); showModal.value = true }
+const openCreate = () => { resetForm(); formError.value = ''; showModal.value = true }
 const openEdit = (driver: Driver) => {
   editingDriver.value = driver
+  formError.value = ''
+  clearErrors()
   Object.assign(form, {
     fullName: driver.fullName,
     address: driver.address,
     contactNumber: driver.contactNumber,
     birthDate: driver.birthDate?.split('T')[0],
+    dateHired: driver.dateHired?.split('T')[0] || '',
     emergencyContact: { ...driver.emergencyContact },
     licenseNumber: driver.licenseNumber,
     licenseExpiration: driver.licenseExpiration?.split('T')[0],
     photo: driver.photo,
+    tinId: driver.tinId || '',
+    sssId: driver.sssId || '',
+    philhealthId: driver.philhealthId || '',
+    pagibigId: driver.pagibigId || '',
     employmentStatus: driver.employmentStatus
   })
   showModal.value = true
@@ -77,6 +95,9 @@ const handlePhotoUpload = async (event: Event) => {
 }
 
 const handleSubmit = async () => {
+  if (!validate()) return
+
+  formError.value = ''
   formLoading.value = true
   try {
     if (editingDriver.value) {
@@ -90,7 +111,11 @@ const handleSubmit = async () => {
     resetForm()
     loadDrivers()
   } catch (err: unknown) {
-    toast.add({ title: 'Error', description: (err as { data?: { message?: string } })?.data?.message || 'Failed', color: 'error' })
+    formError.value = (err as any)?.data?.message || 'Failed to save driver.'
+    if ((err as any)?.data?.data?.errors) {
+      setErrors((err as any).data.data.errors)
+    }
+    toast.add({ title: 'Error', description: formError.value, color: 'error' })
   } finally {
     formLoading.value = false
   }
@@ -119,7 +144,6 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
 </script>
 
 <template>
-  <NuxtLayout name="default">
     <div class="p-6 space-y-5 animate-fadeIn">
       <!-- Header -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -233,9 +257,11 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                       <button v-if="authStore.canManageDrivers" class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" @click="openEdit(driver)">
                         <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
                       </button>
-                      <button v-if="authStore.canManageDrivers" class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors" @click="confirmDelete(driver)">
-                        <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
-                      </button>
+                      <div v-if="authStore.canManageDrivers" :title="(driver as any).operationalStatus === 'Active' ? 'This driver is currently on duty and cannot be deleted.' : undefined">
+                        <button class="p-1.5 rounded-lg transition-colors" :class="(driver as any).operationalStatus === 'Active' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="(driver as any).operationalStatus === 'Active'" @click="confirmDelete(driver)">
+                          <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -275,6 +301,10 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
             </div>
 
             <form @submit.prevent="handleSubmit" class="space-y-4">
+              <div v-if="formError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p class="text-sm text-red-400 font-medium">{{ formError }}</p>
+              </div>
               <!-- Photo -->
               <div class="flex items-center gap-4">
                 <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10">
@@ -296,34 +326,73 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label class="form-label">Full Name *</label>
-                  <input v-model="form.fullName" type="text" class="form-input" required placeholder="Juan dela Cruz" />
+                  <input v-model="form.fullName" @blur="touch('fullName')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.fullName }" required placeholder="Juan dela Cruz" />
+                  <p v-if="errors.fullName" class="mt-1 text-xs text-red-400">{{ errors.fullName }}</p>
                 </div>
                 <div>
                   <label class="form-label">Contact Number *</label>
-                  <input v-model="form.contactNumber" type="text" class="form-input" required placeholder="09171234567" />
+                  <input v-model="form.contactNumber" @blur="touch('contactNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.contactNumber }" required placeholder="09171234567" />
+                  <p v-if="errors.contactNumber" class="mt-1 text-xs text-red-400">{{ errors.contactNumber }}</p>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="form-label">Address *</label>
-                  <input v-model="form.address" type="text" class="form-input" required placeholder="123 Main St, Manila" />
+                  <input v-model="form.address" @blur="touch('address')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.address }" required placeholder="123 Main St, Manila" />
+                  <p v-if="errors.address" class="mt-1 text-xs text-red-400">{{ errors.address }}</p>
                 </div>
                 <div>
                   <label class="form-label">Birth Date *</label>
-                  <input v-model="form.birthDate" type="date" class="form-input" required />
+                  <input v-model="form.birthDate" @blur="touch('birthDate')" type="date" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.birthDate }" required />
+                  <p v-if="errors.birthDate" class="mt-1 text-xs text-red-400">{{ errors.birthDate }}</p>
                 </div>
                 <div>
                   <label class="form-label">Employment Status</label>
-                  <select v-model="form.employmentStatus" class="form-input">
+                  <select v-model="form.employmentStatus" @blur="touch('employmentStatus')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.employmentStatus }">
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                   </select>
+                  <p v-if="errors.employmentStatus" class="mt-1 text-xs text-red-400">{{ errors.employmentStatus }}</p>
                 </div>
                 <div>
+                  <label class="form-label">Date Hired</label>
+                  <input v-model="form.dateHired" @blur="touch('dateHired')" type="date" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.dateHired }" />
+                  <p v-if="errors.dateHired" class="mt-1 text-xs text-red-400">{{ errors.dateHired }}</p>
+                </div>
+                <div class="hidden sm:block"></div> <!-- Spacer to maintain alignment -->
+                <div>
                   <label class="form-label">License Number *</label>
-                  <input v-model="form.licenseNumber" type="text" class="form-input" required placeholder="N01-23-456789" />
+                  <input v-model="form.licenseNumber" @blur="touch('licenseNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.licenseNumber }" required placeholder="N01-23-456789" />
+                  <p v-if="errors.licenseNumber" class="mt-1 text-xs text-red-400">{{ errors.licenseNumber }}</p>
                 </div>
                 <div>
                   <label class="form-label">License Expiration *</label>
-                  <input v-model="form.licenseExpiration" type="date" class="form-input" required />
+                  <input v-model="form.licenseExpiration" @blur="touch('licenseExpiration')" type="date" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.licenseExpiration }" required />
+                  <p v-if="errors.licenseExpiration" class="mt-1 text-xs text-red-400">{{ errors.licenseExpiration }}</p>
+                </div>
+              </div>
+
+              <div class="border-t pt-4" style="border-color: rgba(255,255,255,0.06);">
+                <p class="text-sm font-medium text-slate-300 mb-3">Government IDs</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">TIN ID</label>
+                    <input v-model="form.tinId" @blur="touch('tinId')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.tinId }" placeholder="123-456-789-000" />
+                    <p v-if="errors.tinId" class="mt-1 text-xs text-red-400">{{ errors.tinId }}</p>
+                  </div>
+                  <div>
+                    <label class="form-label">SSS ID</label>
+                    <input v-model="form.sssId" @blur="touch('sssId')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.sssId }" placeholder="12-3456789-0" />
+                    <p v-if="errors.sssId" class="mt-1 text-xs text-red-400">{{ errors.sssId }}</p>
+                  </div>
+                  <div>
+                    <label class="form-label">PhilHealth ID</label>
+                    <input v-model="form.philhealthId" @blur="touch('philhealthId')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.philhealthId }" placeholder="12-345678901-2" />
+                    <p v-if="errors.philhealthId" class="mt-1 text-xs text-red-400">{{ errors.philhealthId }}</p>
+                  </div>
+                  <div>
+                    <label class="form-label">Pag-IBIG ID</label>
+                    <input v-model="form.pagibigId" @blur="touch('pagibigId')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.pagibigId }" placeholder="1234-5678-9012" />
+                    <p v-if="errors.pagibigId" class="mt-1 text-xs text-red-400">{{ errors.pagibigId }}</p>
+                  </div>
                 </div>
               </div>
 
@@ -331,16 +400,19 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                 <p class="text-sm font-medium text-slate-300 mb-3">Emergency Contact</p>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label class="form-label">Name *</label>
-                    <input v-model="form.emergencyContact.name" type="text" class="form-input" required />
+                    <label class="form-label">Name</label>
+                    <input v-model="form.emergencyContact.name" @blur="touch('emergencyContact.name')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors['emergencyContact.name'] }" />
+                    <p v-if="errors['emergencyContact.name']" class="mt-1 text-xs text-red-400">{{ errors['emergencyContact.name'] }}</p>
                   </div>
                   <div>
-                    <label class="form-label">Relationship *</label>
-                    <input v-model="form.emergencyContact.relationship" type="text" class="form-input" required />
+                    <label class="form-label">Relationship</label>
+                    <input v-model="form.emergencyContact.relationship" @blur="touch('emergencyContact.relationship')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors['emergencyContact.relationship'] }" />
+                    <p v-if="errors['emergencyContact.relationship']" class="mt-1 text-xs text-red-400">{{ errors['emergencyContact.relationship'] }}</p>
                   </div>
                   <div>
-                    <label class="form-label">Contact No. *</label>
-                    <input v-model="form.emergencyContact.contactNumber" type="text" class="form-input" required />
+                    <label class="form-label">Contact No.</label>
+                    <input v-model="form.emergencyContact.contactNumber" @blur="touch('emergencyContact.contactNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors['emergencyContact.contactNumber'] }" />
+                    <p v-if="errors['emergencyContact.contactNumber']" class="mt-1 text-xs text-red-400">{{ errors['emergencyContact.contactNumber'] }}</p>
                   </div>
                 </div>
               </div>
@@ -367,8 +439,8 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
             <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
               <UIcon name="i-heroicons-trash" class="w-6 h-6 text-red-400" />
             </div>
-            <h3 class="text-lg font-bold text-white mb-2">Delete Driver</h3>
-            <p class="text-slate-400 text-sm mb-5">Are you sure you want to delete <span class="text-white font-medium">{{ deletingDriver?.fullName }}</span>? This action cannot be undone.</p>
+            <h3 class="text-lg font-bold text-white mb-2">Delete Driver?</h3>
+            <p class="text-slate-400 text-sm mb-5">Are you sure you want to permanently delete this driver?<br/><br/>This action cannot be undone.</p>
             <div class="flex gap-3">
               <button class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
               <button class="btn-primary flex-1" style="background: linear-gradient(135deg, #dc2626, #991b1b);" @click="handleDelete">Delete</button>
@@ -377,7 +449,6 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
         </div>
       </Transition>
     </Teleport>
-  </NuxtLayout>
 </template>
 
 <style scoped>

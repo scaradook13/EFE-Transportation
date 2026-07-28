@@ -42,6 +42,11 @@ export interface Driver {
   licenseNumber: string
   licenseExpiration: string
   photo: string | null
+  dateHired?: string
+  tinId?: string
+  sssId?: string
+  philhealthId?: string
+  pagibigId?: string
   employmentStatus: EmploymentStatus
   operationalStatus: OperationalStatus
   createdBy: User | string
@@ -59,6 +64,7 @@ export interface CreateDriverPayload {
   licenseNumber: string
   licenseExpiration: string
   photo?: string | null
+  dateHired?: string
   employmentStatus?: EmploymentStatus
 }
 

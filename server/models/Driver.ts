@@ -11,13 +11,18 @@ export interface IDriver extends Document {
   contactNumber: string
   birthDate: Date
   emergencyContact: {
-    name: string
-    relationship: string
-    contactNumber: string
+    name?: string
+    relationship?: string
+    contactNumber?: string
   }
   licenseNumber: string
   licenseExpiration: Date
   photo: string | null
+  tinId?: string
+  sssId?: string
+  philhealthId?: string
+  pagibigId?: string
+  dateHired?: Date | null
   employmentStatus: EmploymentStatus
   operationalStatus: OperationalStatus
   createdBy: mongoose.Types.ObjectId
@@ -56,18 +61,18 @@ const DriverSchema = new Schema<IDriver>(
     emergencyContact: {
       name: {
         type: String,
-        required: [true, 'Emergency contact name is required'],
-        trim: true
+        trim: true,
+        default: ''
       },
       relationship: {
         type: String,
-        required: [true, 'Emergency contact relationship is required'],
-        trim: true
+        trim: true,
+        default: ''
       },
       contactNumber: {
         type: String,
-        required: [true, 'Emergency contact number is required'],
-        trim: true
+        trim: true,
+        default: ''
       }
     },
     licenseNumber: {
@@ -82,6 +87,30 @@ const DriverSchema = new Schema<IDriver>(
     },
     photo: {
       type: String,
+      default: null
+    },
+    tinId: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'TIN ID must not exceed 20 characters']
+    },
+    sssId: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'SSS ID must not exceed 20 characters']
+    },
+    philhealthId: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'PhilHealth ID must not exceed 20 characters']
+    },
+    pagibigId: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'Pag-IBIG ID must not exceed 20 characters']
+    },
+    dateHired: {
+      type: Date,
       default: null
     },
     employmentStatus: {

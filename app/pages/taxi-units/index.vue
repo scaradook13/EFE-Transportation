@@ -18,14 +18,21 @@ const showDeleteModal = ref(false)
 const editingUnit = ref<TaxiUnit | null>(null)
 const deletingUnit = ref<TaxiUnit | null>(null)
 const formLoading = ref(false)
+const formError = ref('')
+
+import { taxiUnitSchema } from '~~/shared/utils/validations'
+import { useFormValidation } from '~/composables/useFormValidation'
 
 const form = reactive<CreateTaxiUnitPayload>({
   taxiNumber: '', plateNumber: '', brand: '', model: '',
   year: new Date().getFullYear(), color: '', status: 'Available'
 })
 
+const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(taxiUnitSchema, form)
+
 const resetForm = () => {
   Object.assign(form, { taxiNumber: '', plateNumber: '', brand: '', model: '', year: new Date().getFullYear(), color: '', status: 'Available' })
+  clearErrors()
   editingUnit.value = null
 }
 
@@ -40,14 +47,19 @@ onMounted(loadUnits)
 watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadUnits() }, 300))
 watch(page, loadUnits)
 
-const openCreate = () => { resetForm(); showModal.value = true }
+const openCreate = () => { resetForm(); formError.value = ''; showModal.value = true }
 const openEdit = (unit: TaxiUnit) => {
   editingUnit.value = unit
+  formError.value = ''
+  clearErrors()
   Object.assign(form, { ...unit })
   showModal.value = true
 }
 
 const handleSubmit = async () => {
+  if (!validate()) return
+
+  formError.value = ''
   formLoading.value = true
   try {
     if (editingUnit.value) {
@@ -59,7 +71,11 @@ const handleSubmit = async () => {
     }
     showModal.value = false; resetForm(); loadUnits()
   } catch (err: unknown) {
-    toast.add({ title: 'Error', description: (err as { data?: { message?: string } })?.data?.message || 'Failed', color: 'error' })
+    formError.value = (err as any)?.data?.message || 'Failed to save taxi unit.'
+    if ((err as any)?.data?.data?.errors) {
+      setErrors((err as any).data.data.errors)
+    }
+    toast.add({ title: 'Error', description: formError.value, color: 'error' })
   } finally { formLoading.value = false }
 }
 
@@ -98,7 +114,6 @@ const getTaxiColorHex = (colorName: string) => {
 </script>
 
 <template>
-  <NuxtLayout name="default">
     <div class="p-6 space-y-5 animate-fadeIn">
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -182,9 +197,11 @@ const getTaxiColorHex = (colorName: string) => {
                       <button class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" @click="openEdit(unit)">
                         <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
                       </button>
-                      <button class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors" @click="confirmDelete(unit)">
-                        <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
-                      </button>
+                      <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be deleted.' : undefined">
+                        <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="unit.status === 'In Use'" @click="confirmDelete(unit)">
+                          <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -221,31 +238,40 @@ const getTaxiColorHex = (colorName: string) => {
               </button>
             </div>
             <form @submit.prevent="handleSubmit" class="space-y-4">
+              <div v-if="formError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p class="text-sm text-red-400 font-medium">{{ formError }}</p>
+              </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="form-label">Taxi Number *</label>
-                  <input v-model="form.taxiNumber" type="text" class="form-input" required placeholder="TX-001" />
+                  <input v-model="form.taxiNumber" @blur="touch('taxiNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.taxiNumber }" required placeholder="TX-001" />
+                  <p v-if="errors.taxiNumber" class="mt-1 text-xs text-red-400">{{ errors.taxiNumber }}</p>
                 </div>
                 <div>
                   <label class="form-label">Plate Number *</label>
-                  <input v-model="form.plateNumber" type="text" class="form-input" required placeholder="ABC 1234" />
+                  <input v-model="form.plateNumber" @blur="touch('plateNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.plateNumber }" required placeholder="ABC 1234" />
+                  <p v-if="errors.plateNumber" class="mt-1 text-xs text-red-400">{{ errors.plateNumber }}</p>
                 </div>
                 <div>
                   <label class="form-label">Brand *</label>
-                  <input v-model="form.brand" type="text" class="form-input" required placeholder="Toyota" />
+                  <input v-model="form.brand" @blur="touch('brand')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.brand }" required placeholder="Toyota" />
+                  <p v-if="errors.brand" class="mt-1 text-xs text-red-400">{{ errors.brand }}</p>
                 </div>
                 <div>
                   <label class="form-label">Model *</label>
-                  <input v-model="form.model" type="text" class="form-input" required placeholder="Vios" />
+                  <input v-model="form.model" @blur="touch('model')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.model }" required placeholder="Vios" />
+                  <p v-if="errors.model" class="mt-1 text-xs text-red-400">{{ errors.model }}</p>
                 </div>
                 <div>
                   <label class="form-label">Year *</label>
-                  <input v-model.number="form.year" type="number" class="form-input" required :min="1990" :max="new Date().getFullYear() + 1" />
+                  <input v-model.number="form.year" @blur="touch('year')" type="number" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.year }" required :min="1990" :max="new Date().getFullYear() + 1" />
+                  <p v-if="errors.year" class="mt-1 text-xs text-red-400">{{ errors.year }}</p>
                 </div>
                 <div>
                   <label class="form-label mb-1 block">Color *</label>
                   <div class="relative">
-                    <input v-model="form.color" type="text" class="form-input !pl-10" required placeholder="Yellow" />
+                    <input v-model="form.color" @blur="touch('color')" type="text" class="form-input !pl-10" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.color }" required placeholder="Yellow" />
                     <div 
                       class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border shadow-sm" 
                       :style="{ 
@@ -254,13 +280,15 @@ const getTaxiColorHex = (colorName: string) => {
                       }" 
                     />
                   </div>
+                  <p v-if="errors.color" class="mt-1 text-xs text-red-400">{{ errors.color }}</p>
                 </div>
                 <div class="col-span-2">
                   <label class="form-label">Status</label>
-                  <select v-model="form.status" class="form-input">
+                  <select v-model="form.status" @blur="touch('status')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.status }">
                     <option value="Available">Available</option>
                     <option value="Maintenance">Maintenance</option>
                   </select>
+                  <p v-if="errors.status" class="mt-1 text-xs text-red-400">{{ errors.status }}</p>
                 </div>
               </div>
               <div class="flex gap-3 pt-2">
@@ -285,8 +313,8 @@ const getTaxiColorHex = (colorName: string) => {
             <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
               <UIcon name="i-heroicons-trash" class="w-6 h-6 text-red-400" />
             </div>
-            <h3 class="text-lg font-bold text-white mb-2">Remove Taxi Unit</h3>
-            <p class="text-slate-400 text-sm mb-5">Remove <span class="text-white font-medium">{{ deletingUnit?.taxiNumber }} ({{ deletingUnit?.plateNumber }})</span>?</p>
+            <h3 class="text-lg font-bold text-white mb-2">Delete Taxi Unit?</h3>
+            <p class="text-slate-400 text-sm mb-5">Are you sure you want to permanently delete this taxi unit?<br/><br/>This action cannot be undone.</p>
             <div class="flex gap-3">
               <button class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
               <button class="btn-primary flex-1" style="background: linear-gradient(135deg, #dc2626, #991b1b);" @click="handleDelete">Remove</button>
@@ -295,7 +323,6 @@ const getTaxiColorHex = (colorName: string) => {
         </div>
       </Transition>
     </Teleport>
-  </NuxtLayout>
 </template>
 
 <style scoped>

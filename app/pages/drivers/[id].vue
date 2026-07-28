@@ -25,8 +25,7 @@ const age = computed(() => {
 </script>
 
 <template>
-  <NuxtLayout name="default">
-    <div class="p-6 animate-fadeIn">
+    <div class="p-6 max-w-4xl mx-auto w-full animate-fadeIn">
       <!-- Back -->
       <button class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm mb-5" @click="router.back()">
         <UIcon name="i-heroicons-arrow-left" class="w-4 h-4" />
@@ -38,7 +37,7 @@ const age = computed(() => {
         <p class="text-slate-400">Driver not found</p>
       </div>
 
-      <div v-else class="max-w-4xl space-y-5">
+      <div v-else class="space-y-5">
         <!-- Profile card -->
         <div class="glass-card p-6 flex flex-col sm:flex-row items-start gap-6">
           <div class="w-24 h-24 rounded-full overflow-hidden shrink-0 border-2" style="border-color: rgba(34,197,94,0.3); box-shadow: 0 0 20px rgba(34,197,94,0.15);">
@@ -87,6 +86,10 @@ const age = computed(() => {
                 <p class="text-xs text-slate-500">Full Address</p>
                 <p class="text-sm text-white mt-0.5">{{ driver.address }}</p>
               </div>
+              <div>
+                <p class="text-xs text-slate-500">Date Hired</p>
+                <p class="text-sm text-white mt-0.5">{{ driver.dateHired ? formatDate(driver.dateHired) : 'Not Provided' }}</p>
+              </div>
             </div>
           </div>
 
@@ -107,6 +110,29 @@ const age = computed(() => {
                   <span v-if="isLicenseExpired(driver.licenseExpiration)" class="badge-cancelled text-xs px-1.5 py-0.5 rounded-full">Expired</span>
                   <span v-else-if="isLicenseExpiringSoon(driver.licenseExpiration)" class="badge-on-trip text-xs px-1.5 py-0.5 rounded-full">Expiring Soon</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Government IDs -->
+          <div class="glass-card p-5 md:col-span-2">
+            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">Government Identification</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p class="text-xs text-slate-500">TIN ID</p>
+                <p class="font-mono text-sm text-white mt-0.5">{{ driver.tinId || 'Not Provided' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">SSS ID</p>
+                <p class="font-mono text-sm text-white mt-0.5">{{ driver.sssId || 'Not Provided' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">PhilHealth ID</p>
+                <p class="font-mono text-sm text-white mt-0.5">{{ driver.philhealthId || 'Not Provided' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500">Pag-IBIG ID</p>
+                <p class="font-mono text-sm text-white mt-0.5">{{ driver.pagibigId || 'Not Provided' }}</p>
               </div>
             </div>
           </div>
@@ -132,5 +158,4 @@ const age = computed(() => {
         </div>
       </div>
     </div>
-  </NuxtLayout>
 </template>

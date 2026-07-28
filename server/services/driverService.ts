@@ -2,23 +2,7 @@ import { driverRepository, type CreateDriverDto, type UpdateDriverDto, type Driv
 import { z } from 'zod'
 import { Driver } from '~~/server/models/Driver'
 
-export const createDriverSchema = z.object({
-  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100),
-  address: z.string().min(5, 'Address is required'),
-  contactNumber: z.string().min(7, 'Valid contact number required'),
-  birthDate: z.string().or(z.date()),
-  emergencyContact: z.object({
-    name: z.string().min(2, 'Emergency contact name required'),
-    relationship: z.string().min(2, 'Relationship required'),
-    contactNumber: z.string().min(7, 'Emergency contact number required')
-  }),
-  licenseNumber: z.string().min(3, 'License number required'),
-  licenseExpiration: z.string().or(z.date()),
-  photo: z.string().nullable().optional(),
-  employmentStatus: z.enum(['Active', 'Inactive']).optional()
-})
 
-export const updateDriverSchema = createDriverSchema.partial()
 
 export const driverService = {
   async getAll(filters: DriverFilters, page: number, limit: number) {

@@ -68,7 +68,6 @@ const actionColor = (action: string) => {
 </script>
 
 <template>
-  <NuxtLayout name="default">
     <div class="p-6 space-y-5 animate-fadeIn">
       <div>
         <h1 class="text-2xl font-bold text-white">Audit Logs</h1>
@@ -154,5 +153,4 @@ const actionColor = (action: string) => {
         </div>
       </div>
     </div>
-  </NuxtLayout>
 </template>

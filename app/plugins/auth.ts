@@ -3,6 +3,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   // Wait for auth initialization on application startup
   if (!authStore.initialized) {
-    await authStore.fetchCurrentUser()
+    const headers = import.meta.server ? useRequestHeaders(['cookie']) as HeadersInit : undefined
+    await authStore.fetchCurrentUser(headers)
   }
 })

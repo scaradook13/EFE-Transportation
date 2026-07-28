@@ -1,20 +1,6 @@
 import { userRepository } from '~~/server/repositories/userRepository'
-import { z } from 'zod'
-
-const createUserSchema = z.object({
-  username: z.string().min(3).max(50),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  fullName: z.string().min(2),
-  role: z.enum(['admin', 'dispatcher', 'hr']),
-  isActive: z.boolean().optional()
-})
-
-const updateUserSchema = z.object({
-  fullName: z.string().min(2).optional(),
-  role: z.enum(['admin', 'dispatcher', 'hr']).optional(),
-  isActive: z.boolean().optional(),
-  password: z.string().min(6).optional()
-})
+import { userSchema } from '~~/shared/utils/validations'
+import { handleZodError } from '~~/server/utils/response'
 
 export default defineEventHandler(async (event) => {
   requireRole(event, 'admin')
@@ -38,19 +24,20 @@ export default defineEventHandler(async (event) => {
   }
 
   if (method === 'POST') {
-    const body = await readBody(event)
-    const parsed = createUserSchema.safeParse(body)
-    if (!parsed.success) {
-      throw createError({ statusCode: 400, message: parsed.error.errors[0]?.message || 'Validation failed' })
+    try {
+      const body = await readBody(event)
+      const parsed = await userSchema.parseAsync(body)
+  
+      const existing = await userRepository.findByUsername(parsed.username)
+      if (existing) {
+        throw createError({ statusCode: 422, statusMessage: 'Unprocessable Entity', message: 'Validation failed', data: { errors: { username: 'Username already exists.' } } })
+      }
+  
+      const user = await userRepository.create(parsed)
+      return successResponse(user, 'User created successfully', 201)
+    } catch (err) {
+      handleZodError(err)
     }
-
-    const existing = await userRepository.findByUsername(parsed.data.username)
-    if (existing) {
-      throw createError({ statusCode: 409, message: 'Username already exists' })
-    }
-
-    const user = await userRepository.create(parsed.data)
-    return successResponse(user, 'User created successfully', 201)
   }
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })

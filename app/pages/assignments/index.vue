@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useAssignmentStore } from '~/stores/assignments'
+import { assignmentIssueSchema } from '~~/shared/utils/validations'
+import { useFormValidation } from '~/composables/useFormValidation'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 useHead({ title: 'Taxi Assignment — EFE Taxi Dispatch System' })
@@ -11,13 +13,16 @@ const toast = useToast()
 // --- Issue Form ---
 const showIssueModal = ref(false)
 const issueForm = reactive({ driverId: '', taxiUnitId: '', remarks: '' })
+const { errors: issueErrors, validate: validateIssue, touch: touchIssue, clearErrors: clearIssueErrors, setErrors: setIssueErrors } = useFormValidation(assignmentIssueSchema, issueForm)
 const issuingTaxi = ref(false)
+const issueError = ref('')
 
 // --- Return Modal ---
 const showReturnModal = ref(false)
 const selectedAssignment = ref<(typeof assignmentStore.activeAssignments)[0] | null>(null)
 const returnRemarks = ref('')
 const returningTaxi = ref(false)
+const returnError = ref('')
 
 // --- History Filters ---
 const historyPage = ref(1)
@@ -68,15 +73,16 @@ const openIssueModal = async () => {
   issueForm.driverId = ''
   issueForm.taxiUnitId = ''
   issueForm.remarks = ''
+  issueError.value = ''
+  clearIssueErrors()
   await loadFormData()
   showIssueModal.value = true
 }
 
 const handleIssue = async () => {
-  if (!issueForm.driverId || !issueForm.taxiUnitId) {
-    toast.add({ title: 'Please select both a driver and a taxi unit', color: 'error' })
-    return
-  }
+  if (!validateIssue()) return
+
+  issueError.value = ''
   issuingTaxi.value = true
   try {
     await assignmentStore.issueTaxi(issueForm.driverId, issueForm.taxiUnitId, issueForm.remarks)
@@ -84,7 +90,11 @@ const handleIssue = async () => {
     showIssueModal.value = false
     await loadData()
   } catch (err: any) {
-    toast.add({ title: 'Failed to issue taxi', description: err?.data?.message || err?.message, color: 'error' })
+    issueError.value = err?.data?.message || err?.message || 'Failed to issue taxi'
+    if (err?.data?.data?.errors) {
+      setIssueErrors(err.data.data.errors)
+    }
+    toast.add({ title: 'Failed to issue taxi', description: issueError.value, color: 'error' })
   } finally {
     issuingTaxi.value = false
   }
@@ -93,10 +103,12 @@ const handleIssue = async () => {
 const openReturnModal = (assignment: (typeof assignmentStore.activeAssignments)[0]) => {
   selectedAssignment.value = assignment
   returnRemarks.value = ''
+  returnError.value = ''
   showReturnModal.value = true
 }
 
 const handleReturn = async () => {
+  returnError.value = ''
   if (!selectedAssignment.value) return
   returningTaxi.value = true
   try {
@@ -107,7 +119,8 @@ const handleReturn = async () => {
     showReturnModal.value = false
     await loadData()
   } catch (err: any) {
-    toast.add({ title: 'Failed to return taxi', description: err?.data?.message || err?.message, color: 'error' })
+    returnError.value = err?.data?.message || err?.message || 'Failed to return taxi'
+    toast.add({ title: 'Failed to return taxi', description: returnError.value, color: 'error' })
   } finally {
     returningTaxi.value = false
   }
@@ -140,7 +153,6 @@ const elapsed = (timeIn: string) => {
 </script>
 
 <template>
-  <NuxtLayout name="default">
     <div class="p-6 space-y-6 animate-fadeIn">
       <!-- Header -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -375,31 +387,38 @@ const elapsed = (timeIn: string) => {
             </div>
 
             <div class="space-y-4">
+              <div v-if="issueError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p class="text-sm text-red-400 font-medium">{{ issueError }}</p>
+              </div>
               <div>
-                <label class="form-label">Select Driver</label>
-                <select v-model="issueForm.driverId" class="form-input">
+                <label class="form-label">Select Driver *</label>
+                <select v-model="issueForm.driverId" @blur="touchIssue('driverId')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': issueErrors.driverId }">
                   <option value="">— Select Available Driver —</option>
                   <option v-for="d in availableDrivers" :key="d._id" :value="d._id">
                     {{ d.fullName }} ({{ d.driverId }})
                   </option>
                 </select>
-                <p v-if="!availableDrivers.length" class="text-xs text-amber-400 mt-1">No available drivers at this time</p>
+                <p v-if="issueErrors.driverId" class="mt-1 text-xs text-red-400">{{ issueErrors.driverId }}</p>
+                <p v-else-if="!availableDrivers.length" class="text-xs text-amber-400 mt-1">No available drivers at this time</p>
               </div>
 
               <div>
-                <label class="form-label">Select Taxi Unit</label>
-                <select v-model="issueForm.taxiUnitId" class="form-input">
+                <label class="form-label">Select Taxi Unit *</label>
+                <select v-model="issueForm.taxiUnitId" @blur="touchIssue('taxiUnitId')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': issueErrors.taxiUnitId }">
                   <option value="">— Select Available Taxi —</option>
                   <option v-for="t in availableTaxis" :key="t._id" :value="t._id">
                     {{ t.taxiNumber }} — {{ t.plateNumber }} ({{ t.brand }} {{ t.model }})
                   </option>
                 </select>
-                <p v-if="!availableTaxis.length" class="text-xs text-amber-400 mt-1">No available taxis at this time</p>
+                <p v-if="issueErrors.taxiUnitId" class="mt-1 text-xs text-red-400">{{ issueErrors.taxiUnitId }}</p>
+                <p v-else-if="!availableTaxis.length" class="text-xs text-amber-400 mt-1">No available taxis at this time</p>
               </div>
 
               <div>
                 <label class="form-label">Notes <span class="text-slate-600">(optional)</span></label>
-                <textarea v-model="issueForm.remarks" class="form-input h-20 resize-none" placeholder="Add any notes..." />
+                <textarea v-model="issueForm.remarks" @blur="touchIssue('remarks')" class="form-input h-20 resize-none" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': issueErrors.remarks }" placeholder="Add any notes..." />
+                <p v-if="issueErrors.remarks" class="mt-1 text-xs text-red-400">{{ issueErrors.remarks }}</p>
               </div>
 
               <div class="p-3 rounded-lg text-xs" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); color: #86efac;">
@@ -435,6 +454,11 @@ const elapsed = (timeIn: string) => {
                 <h3 class="text-lg font-bold text-white">Return Taxi</h3>
                 <p class="text-xs text-slate-400">{{ selectedAssignment.assignmentNumber }}</p>
               </div>
+            </div>
+
+            <div v-if="returnError" class="p-3 mb-5 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+              <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <p class="text-sm text-red-400 font-medium">{{ returnError }}</p>
             </div>
 
             <div class="glass-card p-4 mb-5 space-y-2" style="background: rgba(255,255,255,0.03);">
@@ -483,7 +507,6 @@ const elapsed = (timeIn: string) => {
         </div>
       </Transition>
     </Teleport>
-  </NuxtLayout>
 </template>
 
 <style scoped>

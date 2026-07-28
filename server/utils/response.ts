@@ -1,3 +1,6 @@
+import { z } from 'zod'
+import { createError } from 'h3'
+
 export const successResponse = (data: unknown, message = 'Success', statusCode = 200) => {
   return {
     success: true,
@@ -27,4 +30,20 @@ export const errorResponse = (message: string, statusCode = 500, details?: unkno
     message,
     ...(details && { details })
   }
+}
+
+export const handleZodError = (error: unknown) => {
+  if (error instanceof z.ZodError) {
+    const errors: Record<string, string> = {}
+    for (const issue of error.errors) {
+      errors[issue.path.join('.')] = issue.message
+    }
+    throw createError({
+      statusCode: 422,
+      statusMessage: 'Unprocessable Entity',
+      message: 'Validation failed',
+      data: { errors } // Client reads err.data.data.errors
+    })
+  }
+  throw error
 }

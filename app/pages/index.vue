@@ -33,7 +33,6 @@ const getIssuedBy = (a: any) => typeof a.issuedBy === 'object' ? a.issuedBy.full
 </script>
 
 <template>
-  <NuxtLayout name="default">
     <div class="p-6 space-y-6 animate-fadeIn">
       <!-- Header -->
       <div class="flex items-center justify-between">
@@ -191,5 +190,4 @@ const getIssuedBy = (a: any) => typeof a.issuedBy === 'object' ? a.issuedBy.full
         </div>
       </div>
     </div>
-  </NuxtLayout>
 </template>

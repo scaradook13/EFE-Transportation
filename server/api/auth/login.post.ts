@@ -1,25 +1,16 @@
 import { authService } from '../../services/authService'
+import { loginSchema } from '~~/shared/utils/validations'
+import { handleZodError } from '~~/server/utils/response'
 import { z } from 'zod'
-
-const loginSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().optional().default(false)
-})
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const parsed = loginSchema.safeParse(body)
+    
+    // Validate request
+    const parsed = await loginSchema.extend({ rememberMe: z.boolean().optional().default(false) }).parseAsync(body)
 
-    if (!parsed.success) {
-      throw createError({
-        statusCode: 400,
-        message: parsed.error.errors[0]?.message || 'Validation failed'
-      })
-    }
-
-    const { accessToken, refreshToken, user } = await authService.login(parsed.data)
+    const { accessToken, refreshToken, user } = await authService.login(parsed)
 
     const isProduction = process.env.NODE_ENV === 'production'
 
@@ -37,7 +28,7 @@ export default defineEventHandler(async (event) => {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'strict',
-      maxAge: parsed.data.rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7, // 30 days or 7 days
+      maxAge: parsed.rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7, // 30 days or 7 days
       path: '/'
     })
 
@@ -46,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
     return successResponse({ user }, 'Login successful')
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'statusCode' in error) throw error
+    handleZodError(error)
     throw createError({ statusCode: 500, message: 'Login failed' })
   }
 })

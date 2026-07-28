@@ -42,9 +42,8 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async refreshSession() {
+    async refreshSession(headers?: HeadersInit) {
       try {
-        const headers = useRequestHeaders(['cookie']) as HeadersInit
         await $fetch('/api/auth/refresh', { method: 'POST', headers })
         return true
       } catch {
@@ -52,18 +51,16 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async fetchCurrentUser() {
+    async fetchCurrentUser(headers?: HeadersInit) {
       try {
-        const headers = useRequestHeaders(['cookie']) as HeadersInit
         const response = await $fetch<ApiResponse<{ user: AuthUser }>>('/api/auth/me', { headers })
         this.user = response.data.user
       } catch (error: any) {
         // If 401 Unauthorized, attempt a silent refresh
         if (error.response?.status === 401) {
-          const refreshed = await this.refreshSession()
+          const refreshed = await this.refreshSession(headers)
           if (refreshed) {
             try {
-              const headers = useRequestHeaders(['cookie']) as HeadersInit
               // Retry fetching user after successful refresh
               const retryResponse = await $fetch<ApiResponse<{ user: AuthUser }>>('/api/auth/me', { headers })
               this.user = retryResponse.data.user

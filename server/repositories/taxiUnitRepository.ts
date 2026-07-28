@@ -53,6 +53,14 @@ export const taxiUnitRepository = {
     return TaxiUnit.findById(id)
   },
 
+  async findByTaxiNumber(taxiNumber: string) {
+    return TaxiUnit.findOne({ taxiNumber })
+  },
+
+  async findByPlateNumber(plateNumber: string) {
+    return TaxiUnit.findOne({ plateNumber: { $regex: new RegExp(`^${plateNumber}$`, 'i') } })
+  },
+
   async create(data: CreateTaxiUnitDto) {
     const unit = new TaxiUnit(data)
     return unit.save()

@@ -1,13 +1,7 @@
 import { userRepository } from '~~/server/repositories/userRepository'
 import { logAudit } from '~~/server/utils/auditLogger'
-import { z } from 'zod'
-
-const updateUserSchema = z.object({
-  fullName: z.string().min(2).optional(),
-  role: z.enum(['admin', 'dispatcher', 'hr']).optional(),
-  isActive: z.boolean().optional(),
-  password: z.string().min(6).optional()
-})
+import { userEditSchema } from '~~/shared/utils/validations'
+import { handleZodError } from '~~/server/utils/response'
 
 export default defineEventHandler(async (event) => {
   requireRole(event, 'admin')
@@ -27,20 +21,28 @@ export default defineEventHandler(async (event) => {
       return { success: false, message: 'The Primary Administrator account is protected and cannot be edited.' }
     }
 
-    const body = await readBody(event)
-    const parsed = updateUserSchema.safeParse(body)
-    if (!parsed.success) {
-      throw createError({ statusCode: 400, message: parsed.error.errors[0]?.message || 'Validation failed' })
+    try {
+      const body = await readBody(event)
+      
+      // Need to partially accept updates for full/partial fields based on edit form
+      const parsed = await userEditSchema.partial().parseAsync(body)
+      
+      if (parsed.password === '') {
+        delete parsed.password
+      }
+      
+      const updatedUser = await userRepository.update(id, parsed)
+  
+      if (targetUser.isPrimaryAdmin && targetUser._id.toString() === authUser.userId) {
+         logAudit(event, authUser.userId, 'EDIT_PRIMARY_ADMIN', 'User Management', `Primary admin updated own account`)
+      } else {
+         logAudit(event, authUser.userId, 'EDIT_USER', 'User Management', `Updated user: ${targetUser.username}`)
+      }
+  
+      return successResponse(updatedUser, 'User updated successfully')
+    } catch (err) {
+      handleZodError(err)
     }
-    const updatedUser = await userRepository.update(id, parsed.data)
-
-    if (targetUser.isPrimaryAdmin && targetUser._id.toString() === authUser.userId) {
-       logAudit(event, authUser.userId, 'EDIT_PRIMARY_ADMIN', 'User Management', `Primary admin updated own account`)
-    } else {
-       logAudit(event, authUser.userId, 'EDIT_USER', 'User Management', `Updated user: ${targetUser.username}`)
-    }
-
-    return successResponse(updatedUser, 'User updated successfully')
   }
 
   if (method === 'DELETE') {

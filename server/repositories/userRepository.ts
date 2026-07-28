@@ -1,5 +1,6 @@
 import { User, type IUser, type UserRole } from '~~/server/models/User'
 import type { FilterQuery } from 'mongoose'
+import argon2 from 'argon2'
 
 export interface CreateUserDto {
   username: string
@@ -57,6 +58,9 @@ export const userRepository = {
   },
 
   async update(id: string, data: UpdateUserDto) {
+    if (data.password) {
+      data.password = await argon2.hash(data.password)
+    }
     return User.findByIdAndUpdate(id, data, { new: true, runValidators: true })
   },
 

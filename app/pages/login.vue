@@ -12,16 +12,19 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
+import { loginSchema } from '~~/shared/utils/validations'
+import { useFormValidation } from '~/composables/useFormValidation'
+
 const form = reactive({ username: '', password: '' })
+const { errors, validate, touch } = useFormValidation(loginSchema, form)
+
 const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 
 const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    error.value = 'Please enter your username and password'
-    return
-  }
+  if (!validate()) return
+  
   error.value = ''
   loading.value = true
   try {
@@ -76,13 +79,16 @@ const handleLogin = async () => {
             <input
               id="username"
               v-model="form.username"
+              @blur="touch('username')"
               type="text"
               class="form-input"
+              :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.username }"
               placeholder="Enter your username"
               autocomplete="username"
               :disabled="loading"
             />
           </div>
+          <p v-if="errors.username" class="mt-1 text-xs text-red-400">{{ errors.username }}</p>
         </div>
 
         <!-- Password -->
@@ -92,8 +98,10 @@ const handleLogin = async () => {
             <input
               id="password"
               v-model="form.password"
+              @blur="touch('password')"
               :type="showPassword ? 'text' : 'password'"
               class="form-input pr-10"
+              :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.password }"
               placeholder="Enter your password"
               autocomplete="current-password"
               :disabled="loading"
@@ -109,6 +117,7 @@ const handleLogin = async () => {
               />
             </button>
           </div>
+          <p v-if="errors.password" class="mt-1 text-xs text-red-400">{{ errors.password }}</p>
         </div>
 
         <!-- Submit -->
