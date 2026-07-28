@@ -1,17 +1,8 @@
-import { createWriteStream, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import mongoose from 'mongoose'
 import { v4 as uuidv4 } from 'uuid'
 
 export default defineEventHandler(async (event) => {
   requireAuth(event)
-
-  const uploadDir = join(process.cwd(), 'public', 'uploads', 'drivers')
-
-  try {
-    mkdirSync(uploadDir, { recursive: true })
-  } catch {
-    // Directory already exists
-  }
 
   const formData = await readMultipartFormData(event)
 
@@ -35,19 +26,35 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'File size must not exceed 5MB' })
   }
 
+  if (mongoose.connection.readyState !== 1) {
+    throw createError({ statusCode: 500, message: 'Database connection not ready' })
+  }
+
   const ext = (file.type || 'image/jpeg').split('/')[1]
   const filename = `driver-${uuidv4()}.${ext}`
-  const filepath = join(uploadDir, filename)
 
-  await new Promise<void>((resolve, reject) => {
-    const stream = createWriteStream(filepath)
-    stream.write(file.data)
-    stream.end()
-    stream.on('finish', resolve)
-    stream.on('error', reject)
+  const db = mongoose.connection.db
+  if (!db) {
+    throw createError({ statusCode: 500, message: 'Database connection failed' })
+  }
+
+  const bucket = new mongoose.mongo.GridFSBucket(db, {
+    bucketName: 'photos'
   })
 
-  const publicPath = `/uploads/drivers/${filename}`
+  const uploadStream = bucket.openUploadStream(filename, {
+    contentType: file.type
+  })
+  
+  uploadStream.end(file.data)
 
-  return successResponse({ url: publicPath }, 'Photo uploaded successfully')
+  await new Promise<void>((resolve, reject) => {
+    uploadStream.on('finish', () => resolve())
+    uploadStream.on('error', reject)
+  })
+
+  const fileId = uploadStream.id
+  const publicPath = `/api/uploads/photos/${fileId}`
+
+  return successResponse({ url: publicPath, fileId }, 'Photo uploaded successfully')
 })

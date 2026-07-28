@@ -1,5 +1,6 @@
 import { Driver, type IDriver, type EmploymentStatus } from '~~/server/models/Driver'
 import type { FilterQuery } from 'mongoose'
+import mongoose from 'mongoose'
 
 export interface CreateDriverDto {
   fullName: string
@@ -14,6 +15,7 @@ export interface CreateDriverDto {
   licenseNumber: string
   licenseExpiration: Date | string
   photo?: string | null
+  photoFileId?: string | null
   tinId?: string
   sssId?: string
   philhealthId?: string
@@ -36,6 +38,7 @@ export interface UpdateDriverDto {
   licenseNumber?: string
   licenseExpiration?: Date | string
   photo?: string | null
+  photoFileId?: string | null
   tinId?: string
   sssId?: string
   philhealthId?: string
@@ -100,12 +103,38 @@ export const driverRepository = {
   },
 
   async update(id: string, data: UpdateDriverDto) {
+    // If a new photo is uploaded and an old one exists in GridFS, clean it up
+    if (data.photoFileId !== undefined) {
+      const oldDriver = await Driver.findById(id)
+      if (oldDriver && oldDriver.photoFileId && oldDriver.photoFileId.toString() !== data.photoFileId) {
+        if (mongoose.connection.db) {
+          try {
+            const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'photos' })
+            await bucket.delete(new mongoose.Types.ObjectId(oldDriver.photoFileId.toString()))
+          } catch (e) {
+            console.error('Failed to delete old GridFS photo:', e)
+          }
+        }
+      }
+    }
+    
     return Driver.findByIdAndUpdate(id, data, { new: true, runValidators: true })
       .populate('createdBy', 'fullName username')
       .populate('updatedBy', 'fullName username')
   },
 
   async remove(id: string) {
+    const driver = await Driver.findById(id)
+    if (driver && driver.photoFileId) {
+      if (mongoose.connection.db) {
+        try {
+          const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'photos' })
+          await bucket.delete(new mongoose.Types.ObjectId(driver.photoFileId.toString()))
+        } catch (e) {
+          console.error('Failed to delete GridFS photo on driver removal:', e)
+        }
+      }
+    }
     return Driver.findByIdAndDelete(id)
   },
 

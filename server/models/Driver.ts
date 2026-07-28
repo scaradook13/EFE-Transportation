@@ -18,6 +18,7 @@ export interface IDriver extends Document {
   licenseNumber: string
   licenseExpiration: Date
   photo: string | null
+  photoFileId?: mongoose.Types.ObjectId | null
   tinId?: string
   sssId?: string
   philhealthId?: string
@@ -87,6 +88,10 @@ const DriverSchema = new Schema<IDriver>(
     },
     photo: {
       type: String,
+      default: null
+    },
+    photoFileId: {
+      type: Schema.Types.ObjectId,
       default: null
     },
     tinId: {

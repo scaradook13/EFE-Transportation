@@ -25,7 +25,7 @@ const formError = ref('')
 const form = reactive<CreateDriverPayload>({
   fullName: '', address: '', contactNumber: '',
   birthDate: '', emergencyContact: { name: '', relationship: '', contactNumber: '' },
-  dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null,
+  dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null, photoFileId: null,
   tinId: '', sssId: '', philhealthId: '', pagibigId: '',
   employmentStatus: 'Active'
 })
@@ -36,7 +36,7 @@ const resetForm = () => {
   Object.assign(form, {
     fullName: '', address: '', contactNumber: '',
     birthDate: '', emergencyContact: { name: '', relationship: '', contactNumber: '' },
-    dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null,
+    dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null, photoFileId: null,
     tinId: '', sssId: '', philhealthId: '', pagibigId: '',
     employmentStatus: 'Active'
   })
@@ -71,6 +71,7 @@ const openEdit = (driver: Driver) => {
     licenseNumber: driver.licenseNumber,
     licenseExpiration: driver.licenseExpiration?.split('T')[0],
     photo: driver.photo,
+    photoFileId: driver.photoFileId || null,
     tinId: driver.tinId || '',
     sssId: driver.sssId || '',
     philhealthId: driver.philhealthId || '',
@@ -86,8 +87,9 @@ const handlePhotoUpload = async (event: Event) => {
   const fd = new FormData()
   fd.append('photo', file)
   try {
-    const res = await $fetch<{ data: { url: string } }>('/api/uploads/drivers', { method: 'POST', body: fd })
+    const res = await $fetch<{ data: { url: string, fileId: string } }>('/api/uploads/drivers', { method: 'POST', body: fd })
     form.photo = res.data.url
+    form.photoFileId = res.data.fileId
     toast.add({ title: 'Photo uploaded', color: 'success' })
   } catch {
     toast.add({ title: 'Photo upload failed', color: 'error' })
