@@ -55,7 +55,7 @@ const formatDateTime = (d: string) => new Date(d).toLocaleString('en-PH', {
 })
 
 const getUserName = (log: { user: { fullName?: string } | string }) => {
-  return typeof log.user === 'object' ? log.user.fullName : 'Unknown'
+  return (typeof log.user === 'object' && log.user !== null) ? log.user.fullName : 'Unknown'
 }
 
 const actionColor = (action: string) => {

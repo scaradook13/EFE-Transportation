@@ -23,7 +23,7 @@ import { useFormValidation } from '~/composables/useFormValidation'
 const formError = ref('')
 
 const form = reactive<CreateDriverPayload>({
-  fullName: '', address: '', contactNumber: '',
+  driverId: '', fullName: '', address: '', contactNumber: '',
   birthDate: '', emergencyContact: { name: '', relationship: '', contactNumber: '' },
   dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null, photoFileId: null,
   tinId: '', sssId: '', philhealthId: '', pagibigId: '',
@@ -34,7 +34,7 @@ const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(dr
 
 const resetForm = () => {
   Object.assign(form, {
-    fullName: '', address: '', contactNumber: '',
+    driverId: '', fullName: '', address: '', contactNumber: '',
     birthDate: '', emergencyContact: { name: '', relationship: '', contactNumber: '' },
     dateHired: '', licenseNumber: '', licenseExpiration: '', photo: null, photoFileId: null,
     tinId: '', sssId: '', philhealthId: '', pagibigId: '',
@@ -66,6 +66,7 @@ const openEdit = (driver: Driver) => {
   formError.value = ''
   clearErrors()
   Object.assign(form, {
+    driverId: driver.driverId,
     fullName: driver.fullName,
     address: driver.address,
     contactNumber: driver.contactNumber,
@@ -332,6 +333,11 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="form-label">Driver ID *</label>
+                  <input v-model="form.driverId" @blur="touch('driverId')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.driverId }" required placeholder="DRV-001" />
+                  <p v-if="errors.driverId" class="mt-1 text-xs text-red-400">{{ errors.driverId }}</p>
+                </div>
                 <div>
                   <label class="form-label">Full Name *</label>
                   <input v-model="form.fullName" @blur="touch('fullName')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.fullName }" required placeholder="Juan dela Cruz" />

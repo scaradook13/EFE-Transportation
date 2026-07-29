@@ -57,6 +57,7 @@ export interface Driver {
 }
 
 export interface CreateDriverPayload {
+  driverId: string
   fullName: string
   address: string
   contactNumber: string

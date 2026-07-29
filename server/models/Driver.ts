@@ -36,6 +36,7 @@ const DriverSchema = new Schema<IDriver>(
   {
     driverId: {
       type: String,
+      required: [true, 'Driver ID is required'],
       unique: true,
       index: true
     },
@@ -153,12 +154,6 @@ const DriverSchema = new Schema<IDriver>(
   }
 )
 
-// Auto-generate driverId before saving
-DriverSchema.pre('save', async function (next) {
-  if (!this.isNew || this.driverId) return next()
-  const count = await mongoose.model('Driver').countDocuments()
-  this.driverId = `DRV-${String(count + 1).padStart(4, '0')}`
-  next()
-})
+
 
 export const Driver = mongoose.models.Driver || mongoose.model<IDriver>('Driver', DriverSchema)
