@@ -400,7 +400,12 @@ const formatDutyTime = (timeIn: string) => {
                   <td class="text-slate-400 text-sm">{{ getIssuedBy(a) }}</td>
                   <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatDate(a.assignedAt) }}</td>
                   <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatTime(a.timeIn) }}</td>
-                  <td class="text-slate-400 text-xs whitespace-nowrap">{{ a.timeOut ? formatTime(a.timeOut) : '—' }}</td>
+                  <td class="text-slate-400 text-xs whitespace-nowrap">
+                    <template v-if="a.timeOut">
+                      {{ formatDate(a.timeOut) }} • {{ formatTime(a.timeOut) }}
+                    </template>
+                    <template v-else>—</template>
+                  </td>
                   <td class="text-xs font-mono" :style="{ color: a.totalHours ? '#f9a825' : '#64748b' }">
                     {{ formatDuration(a.totalMinutes) }}
                   </td>
