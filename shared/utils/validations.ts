@@ -39,6 +39,7 @@ export const loginSchema = z.object({
 
 // --- Driver Validations ---
 export const driverSchema = z.object({
+  driverId: z.string().min(1, 'Driver ID is required.'),
   fullName: z.string()
     .min(1, 'Full name is required.')
     .min(3, 'Full name must be at least 3 characters.')

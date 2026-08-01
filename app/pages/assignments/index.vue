@@ -24,6 +24,25 @@ const returnRemarks = ref('')
 const returningTaxi = ref(false)
 const returnError = ref('')
 
+// --- Active Assignments Pagination ---
+const activePage = ref(1)
+const activeLimit = 10
+
+const paginatedActiveAssignments = computed(() => {
+  const start = (activePage.value - 1) * activeLimit
+  const end = start + activeLimit
+  return assignmentStore.activeAssignments.slice(start, end)
+})
+
+const totalActivePages = computed(() => Math.ceil(assignmentStore.activeAssignments.length / activeLimit))
+
+watch(() => assignmentStore.activeAssignments.length, (newLength) => {
+  const maxPage = Math.ceil(newLength / activeLimit)
+  if (activePage.value > maxPage && maxPage > 0) {
+    activePage.value = maxPage
+  }
+})
+
 // --- History Filters ---
 const historyPage = ref(1)
 const statusFilter = ref('')
@@ -66,7 +85,18 @@ const loadFormData = async () => {
   availableTaxis.value = taxisRes.data
 }
 
-onMounted(loadData)
+let timerInterval: ReturnType<typeof setInterval>
+const currentTime = ref(Date.now())
+
+onMounted(() => {
+  loadData()
+  timerInterval = setInterval(() => { currentTime.value = Date.now() }, 1000)
+})
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval)
+})
+
 watch([historyPage, statusFilter, debouncedSearch], loadData)
 
 const openIssueModal = async () => {
@@ -127,13 +157,13 @@ const handleReturn = async () => {
 }
 
 const getDriverName = (a: (typeof assignmentStore.activeAssignments)[0]) =>
-  typeof a.driver === 'object' ? a.driver.fullName : '—'
+  (typeof a.driver === 'object' && a.driver !== null) ? (a.driver as any).fullName : '—'
 const getTaxiNumber = (a: (typeof assignmentStore.activeAssignments)[0]) =>
-  typeof a.taxiUnit === 'object' ? a.taxiUnit.taxiNumber : '—'
+  (typeof a.taxiUnit === 'object' && a.taxiUnit !== null) ? (a.taxiUnit as any).taxiNumber : '—'
 const getTaxiPlate = (a: (typeof assignmentStore.activeAssignments)[0]) =>
-  typeof a.taxiUnit === 'object' ? a.taxiUnit.plateNumber : '—'
+  (typeof a.taxiUnit === 'object' && a.taxiUnit !== null) ? (a.taxiUnit as any).plateNumber : '—'
 const getIssuedBy = (a: (typeof assignmentStore.activeAssignments)[0]) =>
-  typeof a.issuedBy === 'object' ? a.issuedBy.fullName : '—'
+  (typeof a.issuedBy === 'object' && a.issuedBy !== null) ? (a.issuedBy as any).fullName : '—'
 
 const formatTime = (d: string) => new Date(d).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true })
 const formatDate = (d: string) => new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -145,10 +175,24 @@ const formatDuration = (mins: number | null) => {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-const elapsed = (timeIn: string) => {
-  const diffMs = Date.now() - new Date(timeIn).getTime()
-  const mins = Math.floor(diffMs / 60000)
-  return formatDuration(mins)
+const getRemainingGraceMs = (timeIn: string) => {
+  const diffMs = currentTime.value - new Date(timeIn).getTime()
+  return (15 * 60000) - diffMs
+}
+
+const formatGraceRemaining = (ms: number) => {
+  const m = Math.floor(ms / 60000)
+  const s = Math.floor((ms % 60000) / 1000)
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+const formatDutyTime = (timeIn: string) => {
+  const diffMs = currentTime.value - new Date(timeIn).getTime()
+  const gracePeriodMs = 15 * 60000
+  const dutyMs = Math.max(0, diffMs - gracePeriodMs)
+  const h = Math.floor(dutyMs / 3600000)
+  const m = Math.floor((dutyMs % 3600000) / 60000)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 </script>
 
@@ -238,11 +282,11 @@ const elapsed = (timeIn: string) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="a in assignmentStore.activeAssignments" :key="a._id">
+              <tr v-for="a in paginatedActiveAssignments" :key="a._id">
                 <td><span class="font-mono text-xs text-green-400">{{ a.assignmentNumber }}</span></td>
                 <td>
                   <p class="text-white font-medium text-sm">{{ getDriverName(a) }}</p>
-                  <p class="text-slate-500 text-xs">{{ typeof a.driver === 'object' ? a.driver.driverId : '' }}</p>
+                  <p class="text-slate-500 text-xs">{{ (typeof a.driver === 'object' && a.driver !== null) ? (a.driver as any).driverId : '' }}</p>
                 </td>
                 <td>
                   <p class="text-white text-sm font-medium">{{ getTaxiNumber(a) }}</p>
@@ -251,7 +295,14 @@ const elapsed = (timeIn: string) => {
                 <td class="text-slate-400 text-sm">{{ getIssuedBy(a) }}</td>
                 <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatTime(a.timeIn) }}</td>
                 <td>
-                  <span class="text-xs font-mono" style="color: #f9a825;">{{ elapsed(a.timeIn) }}</span>
+                  <div v-if="getRemainingGraceMs(a.timeIn) > 0">
+                    <div class="text-[10px] text-amber-500 font-bold uppercase tracking-wider mb-0.5">Grace Period</div>
+                    <div class="font-mono text-xs text-slate-300">{{ formatGraceRemaining(getRemainingGraceMs(a.timeIn)) }} left</div>
+                  </div>
+                  <div v-else>
+                    <div class="text-[10px] text-green-500 font-bold uppercase tracking-wider mb-0.5">On Duty</div>
+                    <div class="font-mono text-xs text-green-400">{{ formatDutyTime(a.timeIn) }}</div>
+                  </div>
                 </td>
                 <td>
                   <NotesViewer :content="a.remarks" title="Assignment Notes" />
@@ -269,6 +320,20 @@ const elapsed = (timeIn: string) => {
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- Active Assignments Pagination -->
+        <div v-if="totalActivePages > 1" class="flex items-center justify-between px-5 py-4 border-t" style="border-color: rgba(255,255,255,0.06);">
+          <p class="text-xs text-slate-500">{{ assignmentStore.activeCount }} total active assignments</p>
+          <div class="flex gap-2">
+            <button :disabled="activePage <= 1" class="btn-secondary px-3 py-1.5 text-xs disabled:opacity-40" @click="activePage--">
+              <UIcon name="i-heroicons-chevron-left" class="w-4 h-4" />
+            </button>
+            <span class="text-xs text-slate-400 self-center px-2">{{ activePage }} / {{ totalActivePages }}</span>
+            <button :disabled="activePage >= totalActivePages" class="btn-secondary px-3 py-1.5 text-xs disabled:opacity-40" @click="activePage++">
+              <UIcon name="i-heroicons-chevron-right" class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -335,7 +400,12 @@ const elapsed = (timeIn: string) => {
                   <td class="text-slate-400 text-sm">{{ getIssuedBy(a) }}</td>
                   <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatDate(a.assignedAt) }}</td>
                   <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatTime(a.timeIn) }}</td>
-                  <td class="text-slate-400 text-xs whitespace-nowrap">{{ a.timeOut ? formatTime(a.timeOut) : '—' }}</td>
+                  <td class="text-slate-400 text-xs whitespace-nowrap">
+                    <template v-if="a.timeOut">
+                      {{ formatDate(a.timeOut) }} • {{ formatTime(a.timeOut) }}
+                    </template>
+                    <template v-else>—</template>
+                  </td>
                   <td class="text-xs font-mono" :style="{ color: a.totalHours ? '#f9a825' : '#64748b' }">
                     {{ formatDuration(a.totalMinutes) }}
                   </td>
@@ -475,8 +545,15 @@ const elapsed = (timeIn: string) => {
                 <span class="text-white">{{ formatTime(selectedAssignment.timeIn) }}</span>
               </div>
               <div class="flex justify-between text-sm">
-                <span class="text-slate-400">Elapsed</span>
-                <span style="color: #f9a825;" class="font-mono font-bold">{{ elapsed(selectedAssignment.timeIn) }}</span>
+                <span class="text-slate-400">Grace Period</span>
+                <span v-if="getRemainingGraceMs(selectedAssignment.timeIn) > 0" class="text-amber-500 font-mono text-xs">
+                  {{ formatGraceRemaining(getRemainingGraceMs(selectedAssignment.timeIn)) }} left
+                </span>
+                <span v-else class="text-slate-500 text-xs">Completed</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-slate-400">Duty Time</span>
+                <span style="color: #4ade80;" class="font-mono font-bold">{{ formatDutyTime(selectedAssignment.timeIn) }}</span>
               </div>
             </div>
 

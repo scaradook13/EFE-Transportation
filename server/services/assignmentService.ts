@@ -75,7 +75,10 @@ export const assignmentService = {
     // Calculate hours worked using server time
     const now = new Date()
     const diffMs = now.getTime() - new Date(assignment.timeIn).getTime()
-    const totalMinutes = Math.round(diffMs / 60000)
+    const gracePeriodMs = 15 * 60000
+    const dutyMs = Math.max(0, diffMs - gracePeriodMs)
+    
+    const totalMinutes = Math.round(dutyMs / 60000)
     const totalHours = Math.round((totalMinutes / 60) * 100) / 100
 
     // Update assignment

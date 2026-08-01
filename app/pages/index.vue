@@ -27,9 +27,9 @@ const formatTime = (dateStr: string) =>
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
 
-const getDriverName = (a: any) => typeof a.driver === 'object' ? a.driver.fullName : '—'
-const getTaxiNumber = (a: any) => typeof a.taxiUnit === 'object' ? a.taxiUnit.taxiNumber : '—'
-const getIssuedBy = (a: any) => typeof a.issuedBy === 'object' ? a.issuedBy.fullName : '—'
+const getDriverName = (a: any) => (typeof a.driver === 'object' && a.driver !== null) ? a.driver.fullName : '—'
+const getTaxiNumber = (a: any) => (typeof a.taxiUnit === 'object' && a.taxiUnit !== null) ? a.taxiUnit.taxiNumber : '—'
+const getIssuedBy = (a: any) => (typeof a.issuedBy === 'object' && a.issuedBy !== null) ? a.issuedBy.fullName : '—'
 </script>
 
 <template>
