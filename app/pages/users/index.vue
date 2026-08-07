@@ -263,7 +263,7 @@ const roleColor = (role: string) => {
               </div>
               <div>
                 <label class="form-label">{{ editingUser ? 'New Password (leave blank to keep)' : 'Password *' }}</label>
-                <input v-model="form.password" @blur="touch('password')" type="password" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.password }" :required="!editingUser" placeholder="Min 6 characters" />
+                <input v-model="form.password" @blur="touch('password')" type="password" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.password }" :required="!editingUser" placeholder="Min 8 characters" />
                 <p v-if="errors.password" class="mt-1 text-xs text-red-400">{{ errors.password }}</p>
               </div>
               <div>
