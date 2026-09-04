@@ -29,9 +29,9 @@ export default defineEventHandler(async (event) => {
       expectedChallenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      authenticator: {
-        credentialID: new Uint8Array(Buffer.from(driver.fingerprint.credentialID, 'base64url')),
-        credentialPublicKey: new Uint8Array(Buffer.from(driver.fingerprint.credentialPublicKey, 'base64url')),
+      credential: {
+        id: driver.fingerprint.credentialID,
+        publicKey: new Uint8Array(Buffer.from(driver.fingerprint.credentialPublicKey, 'base64url')),
         counter: driver.fingerprint.counter,
       },
     });

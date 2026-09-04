@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const options = await generateAuthenticationOptions({
     rpID,
     allowCredentials: [{
-      id: new Uint8Array(Buffer.from(driver.fingerprint.credentialID, 'base64url')),
+      id: driver.fingerprint.credentialID,
       type: 'public-key',
     }],
     userVerification: 'required',
