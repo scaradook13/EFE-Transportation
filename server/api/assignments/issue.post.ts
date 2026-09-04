@@ -1,6 +1,8 @@
 import { assignmentService } from '../../services/assignmentService'
 import { assignmentIssueSchema } from '~~/shared/utils/validations'
 import { handleZodError } from '~~/server/utils/response'
+import { Driver } from '~~/server/models/Driver'
+import jwt from 'jsonwebtoken'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -13,7 +15,28 @@ export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
     const parsed = await assignmentIssueSchema.parseAsync(body)
-  
+    
+    // Fingerprint verification enforcement
+    const driver = await Driver.findById(parsed.driverId)
+    if (!driver) throw createError({ statusCode: 404, message: 'Driver not found' })
+    if (!driver.fingerprint || !driver.fingerprint.registered) {
+      throw createError({ statusCode: 403, message: 'This driver does not have a registered fingerprint. Fingerprint registration is required before dispatch.' })
+    }
+    
+    if (!body.biometricToken) {
+      throw createError({ statusCode: 403, message: 'Biometric verification is required for dispatch.' })
+    }
+    
+    try {
+      const config = useRuntimeConfig()
+      const payload = jwt.verify(body.biometricToken, config.jwtSecret) as any
+      if (payload.type !== 'fingerprint_auth' || payload.driverId !== driver._id.toString()) {
+        throw new Error('Invalid biometric token')
+      }
+    } catch {
+      throw createError({ statusCode: 403, message: 'Invalid or expired biometric token. Please verify fingerprint again.' })
+    }
+
     const assignment = await assignmentService.issue({
       driverId: parsed.driverId,
       taxiUnitId: parsed.taxiUnitId,
