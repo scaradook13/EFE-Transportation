@@ -1,6 +1,6 @@
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
-import { getWebAuthnConfig, getChallengeStorage } from '~/server/utils/webauthn';
-import { Driver } from '~/server/models/Driver';
+import { getWebAuthnConfig, getChallengeStorage } from '~~/server/utils/webauthn';
+import { Driver } from '~~/server/models/Driver';
 
 export default defineEventHandler(async (event) => {
   requireAuth(event);

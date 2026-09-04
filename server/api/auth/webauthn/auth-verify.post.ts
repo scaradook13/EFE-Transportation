@@ -1,6 +1,6 @@
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
-import { getWebAuthnConfig, getChallengeStorage } from '~/server/utils/webauthn';
-import { Driver } from '~/server/models/Driver';
+import { getWebAuthnConfig, getChallengeStorage } from '~~/server/utils/webauthn';
+import { Driver } from '~~/server/models/Driver';
 import jwt from 'jsonwebtoken';
 
 export default defineEventHandler(async (event) => {

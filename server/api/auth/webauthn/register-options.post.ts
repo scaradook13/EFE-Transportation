@@ -1,5 +1,5 @@
 import { generateRegistrationOptions } from '@simplewebauthn/server';
-import { getWebAuthnConfig, getChallengeStorage } from '~/server/utils/webauthn';
+import { getWebAuthnConfig, getChallengeStorage } from '~~/server/utils/webauthn';
 import { v4 as uuidv4 } from 'uuid';
 
 export default defineEventHandler(async (event) => {

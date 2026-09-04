@@ -1,5 +1,5 @@
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
-import { getWebAuthnConfig, getChallengeStorage } from '~/server/utils/webauthn';
+import { getWebAuthnConfig, getChallengeStorage } from '~~/server/utils/webauthn';
 
 export default defineEventHandler(async (event) => {
   requireAuth(event);
