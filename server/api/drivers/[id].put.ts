@@ -35,6 +35,17 @@ export default defineEventHandler(async (event) => {
 
     const driver = await driverService.update(id, { ...parsed, updatedBy: authUser.userId })
 
+    if (body.fingerprintCredential) {
+      driver.fingerprint = {
+        registered: true,
+        credentialID: body.fingerprintCredential.credentialID,
+        credentialPublicKey: body.fingerprintCredential.credentialPublicKey,
+        counter: body.fingerprintCredential.counter,
+        registeredAt: new Date()
+      };
+      await driver.save();
+    }
+
     if (parsed.employmentStatus === 'Active' && oldEmploymentStatus !== 'Active' && oldOpStatus !== 'Active') {
       logAudit(
         event, 

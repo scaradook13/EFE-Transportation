@@ -50,6 +50,10 @@ export interface Driver {
   pagibigId?: string
   employmentStatus: EmploymentStatus
   operationalStatus: OperationalStatus
+  fingerprint?: {
+    registered: boolean;
+    registeredAt?: string;
+  }
   createdBy: User | string
   updatedBy: User | string | null
   createdAt: string
@@ -69,6 +73,7 @@ export interface CreateDriverPayload {
   photoFileId?: string | null
   dateHired?: string
   employmentStatus?: EmploymentStatus
+  fingerprintCredential?: any
 }
 
 // ==================== Taxi Unit Types ====================
