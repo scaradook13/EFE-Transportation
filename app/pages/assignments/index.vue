@@ -2,6 +2,7 @@
 import { useAssignmentStore } from '~/stores/assignments'
 import { assignmentIssueSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
+import { startAuthentication } from '@simplewebauthn/browser'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 useHead({ title: 'Taxi Assignment — EFE Taxi Dispatch System' })
@@ -115,8 +116,37 @@ const handleIssue = async () => {
   issueError.value = ''
   issuingTaxi.value = true
   try {
-    await assignmentStore.issueTaxi(issueForm.driverId, issueForm.taxiUnitId, issueForm.remarks)
-    toast.add({ title: '✅ Taxi issued successfully!', description: 'Driver is now active', color: 'success' })
+    // 1. Initiate WebAuthn Options
+    const optionsRes = await $fetch<{ options: any }>('/api/auth/webauthn/auth-options', {
+      method: 'POST',
+      body: { driverId: issueForm.driverId }
+    }).catch(err => {
+      throw new Error(err.data?.message || 'Failed to get fingerprint challenge. Is fingerprint registered?');
+    });
+
+    // 2. Start WebAuthn on device
+    let authResp;
+    try {
+      authResp = await startAuthentication({ optionsJSON: optionsRes.options });
+    } catch (err: any) {
+      throw new Error('Fingerprint verification cancelled or failed.');
+    }
+
+    // 3. Verify on server and get Biometric Token
+    const verifyRes = await $fetch<{ success: boolean, biometricToken: string }>('/api/auth/webauthn/auth-verify', {
+      method: 'POST',
+      body: {
+        driverId: issueForm.driverId,
+        response: authResp
+      }
+    });
+
+    if (!verifyRes.success || !verifyRes.biometricToken) {
+      throw new Error('Invalid fingerprint verification');
+    }
+
+    await assignmentStore.issueTaxi(issueForm.driverId, issueForm.taxiUnitId, issueForm.remarks, verifyRes.biometricToken)
+    toast.add({ title: '🚕 Taxi issued successfully!', description: 'Driver is now active', color: 'success' })
     showIssueModal.value = false
     await loadData()
   } catch (err: any) {

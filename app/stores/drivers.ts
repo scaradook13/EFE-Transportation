@@ -46,7 +46,7 @@ export const useDriverStore = defineStore('drivers', {
       this.activeDrivers = response.data
     },
 
-    async create(payload: CreateDriverPayload) {
+    async create(payload: CreateDriverPayload & { fingerprintCredential?: any }) {
       const response = await $fetch<ApiResponse<Driver>>('/api/drivers', {
         method: 'POST',
         body: payload

@@ -52,12 +52,12 @@ export const useAssignmentStore = defineStore('assignments', {
       }
     },
 
-    async issueTaxi(driverId: string, taxiUnitId: string, remarks = '') {
+    async issueTaxi(driverId: string, taxiUnitId: string, remarks = '', biometricToken?: string) {
       this.actionLoading = true
       try {
         const response = await $fetch<ApiResponse<Assignment>>('/api/assignments/issue', {
           method: 'POST',
-          body: { driverId, taxiUnitId, remarks }
+          body: { driverId, taxiUnitId, remarks, biometricToken }
         })
         return response.data
       } finally {

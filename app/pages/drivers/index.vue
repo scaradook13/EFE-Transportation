@@ -20,8 +20,12 @@ const deletingDriver = ref<Driver | null>(null)
 const formLoading = ref(false)
 import { driverSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
+import { startRegistration } from '@simplewebauthn/browser'
 
 const formError = ref('')
+const fingerprintRegistered = ref(false)
+const registeringFingerprint = ref(false)
+const fingerprintCredential = ref<any>(null)
 
 const form = reactive<CreateDriverPayload>({
   driverId: '', fullName: '', address: '', contactNumber: '',
@@ -44,6 +48,9 @@ const resetForm = () => {
   clearErrors()
   editingDriver.value = null
   showCameraModal.value = false
+  fingerprintRegistered.value = false
+  fingerprintCredential.value = null
+  registeringFingerprint.value = false
 }
 
 const loadDrivers = () => {
@@ -67,6 +74,9 @@ const openEdit = (driver: Driver) => {
   editingDriver.value = driver
   formError.value = ''
   clearErrors()
+  fingerprintRegistered.value = !!(driver as any).fingerprint?.registered
+  fingerprintCredential.value = null
+  registeringFingerprint.value = false
   Object.assign(form, {
     driverId: driver.driverId,
     fullName: driver.fullName,
@@ -107,11 +117,55 @@ const handlePhotoUpload = async (event: Event) => {
   await uploadPhoto(file)
 }
 
+const handleRegisterFingerprint = async () => {
+  try {
+    registeringFingerprint.value = true
+    formError.value = ''
+    
+    const optionsRes = await $fetch<{ options: any, userId: string }>('/api/auth/webauthn/register-options', {
+      method: 'POST',
+      body: { username: form.driverId || form.fullName || 'driver' }
+    })
+    
+    const authResp = await startRegistration({ optionsJSON: optionsRes.options })
+    
+    const verifyRes = await $fetch<{ success: boolean, credential: any }>('/api/auth/webauthn/register-verify', {
+      method: 'POST',
+      body: {
+        userId: optionsRes.userId,
+        response: authResp
+      }
+    })
+    
+    if (verifyRes.success) {
+      fingerprintRegistered.value = true
+      fingerprintCredential.value = verifyRes.credential
+      toast.add({ title: 'Fingerprint registered successfully', color: 'success' })
+    }
+  } catch (err: any) {
+    console.error(err)
+    formError.value = err.data?.message || err.message || 'Fingerprint registration failed.'
+    toast.add({ title: 'Registration Failed', description: formError.value, color: 'error' })
+  } finally {
+    registeringFingerprint.value = false
+  }
+}
+
 const handleSubmit = async () => {
   if (!validate()) return
 
+  if (!editingDriver.value && !fingerprintRegistered.value) {
+    formError.value = 'Fingerprint registration is required before saving the driver.'
+    return
+  }
+
   formError.value = ''
   formLoading.value = true
+  
+  if (fingerprintCredential.value) {
+    form.fingerprintCredential = fingerprintCredential.value
+  }
+
   try {
     if (editingDriver.value) {
       await driverStore.update(editingDriver.value._id, form)
@@ -442,6 +496,30 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                     <label class="form-label">Contact No.</label>
                     <input v-model="form.emergencyContact.contactNumber" @blur="touch('emergencyContact.contactNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors['emergencyContact.contactNumber'] }" />
                     <p v-if="errors['emergencyContact.contactNumber']" class="mt-1 text-xs text-red-400">{{ errors['emergencyContact.contactNumber'] }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t pt-4" style="border-color: rgba(255,255,255,0.06);">
+                <p class="text-sm font-medium text-slate-300 mb-3">Fingerprint Identification *</p>
+                <div class="flex items-center gap-4">
+                  <div class="flex-1 p-3 rounded-lg border flex items-center justify-between" :class="fingerprintRegistered ? 'border-green-500/30 bg-green-500/10' : 'border-slate-500/30 bg-slate-500/10'">
+                    <div class="flex items-center gap-3">
+                      <UIcon name="i-heroicons-finger-print" class="w-6 h-6" :class="fingerprintRegistered ? 'text-green-400' : 'text-slate-400'" />
+                      <div>
+                        <p class="text-sm font-medium" :class="fingerprintRegistered ? 'text-green-400' : 'text-slate-300'">
+                          {{ fingerprintRegistered ? 'Fingerprint Registered Successfully' : 'Fingerprint Not Registered' }}
+                        </p>
+                        <p class="text-xs text-slate-500" v-if="!fingerprintRegistered">Required for driver dispatch</p>
+                      </div>
+                    </div>
+                    <button type="button" class="btn-secondary text-xs px-3 py-1.5" @click="handleRegisterFingerprint" :disabled="registeringFingerprint || fingerprintRegistered" v-if="!fingerprintRegistered">
+                      <UIcon v-if="registeringFingerprint" name="i-heroicons-arrow-path" class="w-3.5 h-3.5 animate-spin" />
+                      {{ registeringFingerprint ? 'Registering...' : 'Register Fingerprint' }}
+                    </button>
+                    <button type="button" class="btn-secondary text-xs px-3 py-1.5" @click="fingerprintRegistered = false; fingerprintCredential = null" v-else>
+                      Clear / Retry
+                    </button>
                   </div>
                 </div>
               </div>

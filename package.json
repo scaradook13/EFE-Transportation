@@ -18,6 +18,8 @@
     "@iconify-json/lucide": "^1.2.117",
     "@nuxt/ui": "^4.10.0",
     "@pinia/nuxt": "^1.0.1",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.0",
     "@vueuse/nuxt": "^14.3.0",
     "argon2": "^0.45.1",
     "bcryptjs": "^2.4.3",

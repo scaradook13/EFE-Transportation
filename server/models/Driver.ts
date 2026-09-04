@@ -138,6 +138,13 @@ const DriverSchema = new Schema<IDriver>(
       required: true,
       index: true
     },
+    fingerprint: {
+      registered: { type: Boolean, default: false },
+      credentialID: { type: String },
+      credentialPublicKey: { type: String },
+      counter: { type: Number, default: 0 },
+      registeredAt: { type: Date }
+    },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
