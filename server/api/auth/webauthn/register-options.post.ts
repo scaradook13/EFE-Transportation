@@ -19,8 +19,9 @@ export default defineEventHandler(async (event) => {
     userName: username,
     attestationType: 'none',
     authenticatorSelection: {
+      authenticatorAttachment: 'platform',
       residentKey: 'discouraged',
-      userVerification: 'preferred',
+      userVerification: 'required',
     },
   });
 

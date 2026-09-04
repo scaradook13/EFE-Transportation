@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
       id: new Uint8Array(Buffer.from(driver.fingerprint.credentialID, 'base64url')),
       type: 'public-key',
     }],
-    userVerification: 'preferred',
+    userVerification: 'required',
   });
 
   await storage.setItem(`auth-${driver._id}`, options.challenge);
