@@ -13,6 +13,7 @@ const search = ref('')
 const statusFilter = ref('')
 const page = ref(1)
 const showModal = ref(false)
+const showCameraModal = ref(false)
 const showDeleteModal = ref(false)
 const editingDriver = ref<Driver | null>(null)
 const deletingDriver = ref<Driver | null>(null)
@@ -42,6 +43,7 @@ const resetForm = () => {
   })
   clearErrors()
   editingDriver.value = null
+  showCameraModal.value = false
 }
 
 const loadDrivers = () => {
@@ -86,19 +88,23 @@ const openEdit = (driver: Driver) => {
   showModal.value = true
 }
 
-const handlePhotoUpload = async (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
+const uploadPhoto = async (file: File) => {
   const fd = new FormData()
   fd.append('photo', file)
   try {
     const res = await $fetch<{ data: { url: string, fileId: string } }>('/api/uploads/drivers', { method: 'POST', body: fd })
     form.photo = res.data.url
     form.photoFileId = res.data.fileId
-    toast.add({ title: 'Photo uploaded', color: 'success' })
+    toast.add({ title: 'Photo uploaded successfully', color: 'success' })
   } catch {
     toast.add({ title: 'Photo upload failed', color: 'error' })
   }
+}
+
+const handlePhotoUpload = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  await uploadPhoto(file)
 }
 
 const handleSubmit = async () => {
@@ -294,6 +300,9 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
           </div>
         </div>
       </div>
+
+      <!-- Camera Capture Modal -->
+      <CameraCaptureModal v-model="showCameraModal" @capture="uploadPhoto" />
     </div>
 
     <!-- Driver Form Modal -->
@@ -316,19 +325,25 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
               </div>
               <!-- Photo -->
               <div class="flex items-center gap-4">
-                <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10">
+                <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white/10 shrink-0">
                   <img v-if="form.photo" :src="form.photo" alt="Preview" class="w-full h-full object-cover" />
                   <div v-else class="w-full h-full bg-green-900/20 flex items-center justify-center">
                     <UIcon name="i-heroicons-user" class="w-7 h-7 text-green-600" />
                   </div>
                 </div>
                 <div>
-                  <label class="btn-secondary text-xs cursor-pointer">
-                    <UIcon name="i-heroicons-camera" class="w-3.5 h-3.5" />
-                    Upload Photo
-                    <input type="file" class="hidden" accept="image/*" @change="handlePhotoUpload" />
-                  </label>
-                  <p class="text-xs text-slate-600 mt-1">JPG, PNG up to 5MB</p>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label class="btn-secondary text-xs cursor-pointer">
+                      <UIcon name="i-heroicons-arrow-up-tray" class="w-3.5 h-3.5" />
+                      Upload Photo
+                      <input type="file" class="hidden" accept="image/*" @change="handlePhotoUpload" />
+                    </label>
+                    <button type="button" class="btn-secondary text-xs" @click="showCameraModal = true">
+                      <UIcon name="i-heroicons-camera" class="w-3.5 h-3.5" />
+                      Take Photo
+                    </button>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-1">JPG, PNG up to 5MB or capture with camera</p>
                 </div>
               </div>
 
