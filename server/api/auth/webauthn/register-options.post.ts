@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     userName: username,
     attestationType: 'none',
     authenticatorSelection: {
-      authenticatorAttachment: 'platform',
+      authenticatorAttachment: 'cross-platform',
       residentKey: 'discouraged',
       userVerification: 'required',
     },
