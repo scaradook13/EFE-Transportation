@@ -47,8 +47,8 @@ export const dispatchService = {
 
     const dispatch = await dispatchRepository.create({ ...data, dispatcher: dispatcherId })
 
-    // Update taxi unit status to On Trip
-    await taxiUnitRepository.update(data.taxiUnit, { status: 'On Trip' })
+    // Update taxi unit status to In Use
+    await taxiUnitRepository.update(data.taxiUnit, { status: 'In Use' })
 
     return dispatch
   },

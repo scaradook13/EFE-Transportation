@@ -28,7 +28,7 @@ export const errorResponse = (message: string, statusCode = 500, details?: unkno
     success: false,
     statusCode,
     message,
-    ...(details && { details })
+    ...(details !== undefined ? { details } : {})
   }
 }
 

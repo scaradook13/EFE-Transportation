@@ -1,4 +1,4 @@
-import { Driver, type IDriver, type EmploymentStatus } from '~~/server/models/Driver'
+import { Driver, type IDriver, type EmploymentStatus, type OperationalStatus } from '~~/server/models/Driver'
 import type { FilterQuery } from 'mongoose'
 import mongoose from 'mongoose'
 
@@ -22,6 +22,7 @@ export interface CreateDriverDto {
   pagibigId?: string
   dateHired?: Date | string | null
   employmentStatus?: EmploymentStatus
+  operationalStatus?: OperationalStatus
   createdBy: string
 }
 
@@ -45,6 +46,7 @@ export interface UpdateDriverDto {
   pagibigId?: string
   dateHired?: Date | string | null
   employmentStatus?: EmploymentStatus
+  operationalStatus?: OperationalStatus
   updatedBy?: string
 }
 
