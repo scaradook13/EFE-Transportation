@@ -205,7 +205,7 @@ export interface PaginationMeta {
 }
 
 // ==================== Boundary Report Types ====================
-export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly'
+export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
 export interface BreakdownItem {
   label: string
@@ -218,6 +218,7 @@ export interface BreakdownItem {
 }
 
 export interface BoundaryReportData {
+  reportType?: 'taxi'
   taxi: {
     _id: string
     taxiNumber: string
@@ -235,8 +236,8 @@ export interface BoundaryReportData {
     startDate: string
     endDate: string
     displayLabel: string
-    prevDate: string
-    nextDate: string
+    prevDate?: string
+    nextDate?: string
   }
   activeDeployment: {
     assignmentId: string
@@ -280,4 +281,48 @@ export interface BoundaryReportData {
     status: 'Active' | 'Completed'
   }>
 }
+
+export interface FleetTaxiSummary {
+  _id: string
+  taxiNumber: string
+  plateNumber: string
+  brand: string
+  model: string
+  vehicle: string
+  color: string
+  taxiType: TaxiType
+  formattedTaxiType: string
+  status: string
+  dispatches: number
+  totalMinutes: number
+  totalHours: number
+  boundary: number
+  formattedBoundary: string
+}
+
+export interface FleetBoundaryReportData {
+  reportType: 'fleet'
+  period: ReportPeriod
+  dateRange: {
+    startDate: string
+    endDate: string
+    displayLabel: string
+    prevDate?: string
+    nextDate?: string
+  }
+  summary: {
+    totalTaxis: number
+    activeTaxisInPeriod: number
+    totalDispatches: number
+    totalMinutes: number
+    totalHours: number
+    formattedTotalHours: string
+    totalBoundary: number
+    formattedTotalBoundary: string
+    avgBoundaryPerTaxi: number
+    formattedAvgBoundaryPerTaxi: string
+  }
+  taxis: FleetTaxiSummary[]
+}
+
 

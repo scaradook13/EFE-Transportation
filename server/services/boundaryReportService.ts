@@ -5,87 +5,117 @@ import { DriverAssignment, type IDriverAssignment } from '../models/DriverAssign
 import { calculateBoundary, formatBoundaryCurrency, formatTaxiType } from '../../shared/utils/boundary'
 
 
-export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly'
+import type {
+  ReportPeriod,
+  BreakdownItem,
+  BoundaryReportData,
+  FleetBoundaryReportData,
+  FleetTaxiSummary
+} from '../../app/types'
 
-export interface BreakdownItem {
-  label: string
-  subLabel?: string
-  date: string
-  boundary: number
-  dispatches: number
-  totalMinutes: number
-  totalHours: number
-}
+export type { ReportPeriod, BreakdownItem, BoundaryReportData, FleetBoundaryReportData, FleetTaxiSummary }
 
-export interface BoundaryReportData {
-  taxi: {
-    _id: string
-    taxiNumber: string
-    plateNumber: string
-    brand: string
-    model: string
-    year: number
-    color: string
-    taxiType: 'BATMAN' | 'SUPERMAN'
-    formattedTaxiType: string
-    status: string
-  }
-  period: ReportPeriod
-  dateRange: {
-    startDate: string
-    endDate: string
-    displayLabel: string
-    prevDate: string
-    nextDate: string
-  }
-  activeDeployment: {
-    assignmentId: string
-    assignmentNumber: string
-    driver: {
-      _id: string
-      fullName: string
-      driverId: string
+export function resolveDateRange(
+  period: ReportPeriod,
+  dateInput?: string,
+  startDateInput?: string,
+  endDateInput?: string
+): {
+  start: Date
+  end: Date
+  displayLabel: string
+  prevDate?: string
+  nextDate?: string
+  startDateStr: string
+  endDateStr: string
+} {
+  const anchor = (dateInput && dayjs(dateInput).isValid()) ? dayjs(dateInput) : dayjs()
+
+  if (period === 'custom') {
+    if (!startDateInput || !endDateInput) {
+      throw createError({ statusCode: 400, message: 'Both start date and end date are required for custom date range' })
     }
-    timeIn: string
-    elapsedMinutes: number
-    elapsedHours: number
-    formattedElapsed: string
-    currentBoundary: number
-    baseBoundary: number
-    overtimeHours: number
-  } | null
-  summary: {
-    totalBoundary: number
-    formattedTotalBoundary: string
-    totalDispatches: number
-    totalMinutes: number
-    totalHours: number
-    formattedTotalHours: string
-    avgBoundary: number
-    formattedAvgBoundary: string
+    const s = dayjs(startDateInput).startOf('day')
+    const e = dayjs(endDateInput).endOf('day')
+    if (!s.isValid() || !e.isValid()) {
+      throw createError({ statusCode: 400, message: 'Invalid start date or end date format' })
+    }
+    if (e.isBefore(s)) {
+      throw createError({ statusCode: 400, message: 'End date must not be earlier than start date' })
+    }
+    return {
+      start: s.toDate(),
+      end: e.toDate(),
+      displayLabel: `${s.format('MMMM D, YYYY')} – ${e.format('MMMM D, YYYY')}`,
+      startDateStr: s.format('YYYY-MM-DD'),
+      endDateStr: e.format('YYYY-MM-DD')
+    }
   }
-  breakdown: BreakdownItem[]
-  records: Array<{
-    _id: string
-    assignmentNumber: string
-    driverName: string
-    driverId: string
-    timeIn: string
-    timeOut: string | null
-    duration: string
-    totalMinutes: number
-    boundary: number
-    formattedBoundary: string
-    overtimeHours: number
-    status: 'Active' | 'Completed'
-  }>
+
+  if (period === 'daily') {
+    const s = anchor.startOf('day')
+    const e = anchor.endOf('day')
+    return {
+      start: s.toDate(),
+      end: e.toDate(),
+      displayLabel: anchor.format('MMMM D, YYYY'),
+      prevDate: anchor.subtract(1, 'day').format('YYYY-MM-DD'),
+      nextDate: anchor.add(1, 'day').format('YYYY-MM-DD'),
+      startDateStr: s.format('YYYY-MM-DD'),
+      endDateStr: e.format('YYYY-MM-DD')
+    }
+  }
+
+  if (period === 'weekly') {
+    const dayOfWeek = anchor.day() // 0 = Sunday, 1 = Monday, ...
+    const monday = dayOfWeek === 0 ? anchor.subtract(6, 'day').startOf('day') : anchor.subtract(dayOfWeek - 1, 'day').startOf('day')
+    const sunday = monday.add(6, 'day').endOf('day')
+    return {
+      start: monday.toDate(),
+      end: sunday.toDate(),
+      displayLabel: `${monday.format('MMMM D')} – ${sunday.format(monday.month() === sunday.month() ? 'D, YYYY' : 'MMMM D, YYYY')}`,
+      prevDate: monday.subtract(7, 'day').format('YYYY-MM-DD'),
+      nextDate: monday.add(7, 'day').format('YYYY-MM-DD'),
+      startDateStr: monday.format('YYYY-MM-DD'),
+      endDateStr: sunday.format('YYYY-MM-DD')
+    }
+  }
+
+  if (period === 'monthly') {
+    const s = anchor.startOf('month')
+    const e = anchor.endOf('month')
+    return {
+      start: s.toDate(),
+      end: e.toDate(),
+      displayLabel: anchor.format('MMMM YYYY'),
+      prevDate: anchor.subtract(1, 'month').format('YYYY-MM-DD'),
+      nextDate: anchor.add(1, 'month').format('YYYY-MM-DD'),
+      startDateStr: s.format('YYYY-MM-DD'),
+      endDateStr: e.format('YYYY-MM-DD')
+    }
+  }
+
+  // yearly
+  const s = anchor.startOf('year')
+  const e = anchor.endOf('year')
+  return {
+    start: s.toDate(),
+    end: e.toDate(),
+    displayLabel: anchor.format('YYYY'),
+    prevDate: anchor.subtract(1, 'year').format('YYYY-MM-DD'),
+    nextDate: anchor.add(1, 'year').format('YYYY-MM-DD'),
+    startDateStr: s.format('YYYY-MM-DD'),
+    endDateStr: e.format('YYYY-MM-DD')
+  }
 }
 
 export const boundaryReportService = {
   async getTaxiBoundaryReport(
     taxiIdentifier: string,
     period: ReportPeriod = 'daily',
-    dateInput?: string
+    dateInput?: string,
+    startDateInput?: string,
+    endDateInput?: string
   ): Promise<BoundaryReportData> {
     await connectDB()
 
@@ -101,34 +131,17 @@ export const boundaryReportService = {
       throw createError({ statusCode: 404, message: `Taxi unit '${taxiIdentifier}' not found` })
     }
 
-    // 2. Resolve Anchor Date and Period Date Ranges
-    const anchor = (dateInput && dayjs(dateInput).isValid()) ? dayjs(dateInput) : dayjs()
-    let start: Date
-    let end: Date
-    let displayLabel: string
-    let prevDate: string
-    let nextDate: string
+    // 2. Resolve Date Ranges
+    const { start, end, displayLabel, prevDate, nextDate, startDateStr, endDateStr } = resolveDateRange(
+      period,
+      dateInput,
+      startDateInput,
+      endDateInput
+    )
     const breakdown: BreakdownItem[] = []
 
-    if (period === 'daily') {
-      start = anchor.startOf('day').toDate()
-      end = anchor.endOf('day').toDate()
-      displayLabel = anchor.format('MMMM D, YYYY')
-      prevDate = anchor.subtract(1, 'day').format('YYYY-MM-DD')
-      nextDate = anchor.add(1, 'day').format('YYYY-MM-DD')
-    } else if (period === 'weekly') {
-      // Monday to Sunday
-      const dayOfWeek = anchor.day() // 0 = Sunday, 1 = Monday, ...
-      const monday = dayOfWeek === 0 ? anchor.subtract(6, 'day').startOf('day') : anchor.subtract(dayOfWeek - 1, 'day').startOf('day')
-      const sunday = monday.add(6, 'day').endOf('day')
-      start = monday.toDate()
-      end = sunday.toDate()
-
-      displayLabel = `${monday.format('MMMM D')} – ${sunday.format(monday.month() === sunday.month() ? 'D, YYYY' : 'MMMM D, YYYY')}`
-      prevDate = monday.subtract(7, 'day').format('YYYY-MM-DD')
-      nextDate = monday.add(7, 'day').format('YYYY-MM-DD')
-
-      // Initialize 7 days breakdown
+    if (period === 'weekly') {
+      const monday = dayjs(start)
       const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
       for (let i = 0; i < 7; i++) {
         const d = monday.add(i, 'day')
@@ -143,16 +156,7 @@ export const boundaryReportService = {
         })
       }
     } else if (period === 'monthly') {
-      const monthStart = anchor.startOf('month')
-      const monthEnd = anchor.endOf('month')
-      start = monthStart.toDate()
-      end = monthEnd.toDate()
-
-      displayLabel = anchor.format('MMMM YYYY')
-      prevDate = anchor.subtract(1, 'month').format('YYYY-MM-DD')
-      nextDate = anchor.add(1, 'month').format('YYYY-MM-DD')
-
-      // Initialize all days of the month
+      const anchor = dayjs(start)
       const daysInMonth = anchor.daysInMonth()
       for (let day = 1; day <= daysInMonth; day++) {
         const d = anchor.date(day)
@@ -166,18 +170,8 @@ export const boundaryReportService = {
           totalHours: 0
         })
       }
-    } else {
-      // Yearly
-      const yearStart = anchor.startOf('year')
-      const yearEnd = anchor.endOf('year')
-      start = yearStart.toDate()
-      end = yearEnd.toDate()
-
-      displayLabel = anchor.format('YYYY')
-      prevDate = anchor.subtract(1, 'year').format('YYYY-MM-DD')
-      nextDate = anchor.add(1, 'year').format('YYYY-MM-DD')
-
-      // Initialize 12 months
+    } else if (period === 'yearly') {
+      const anchor = dayjs(start)
       const monthNames = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
@@ -194,7 +188,27 @@ export const boundaryReportService = {
           totalHours: 0
         })
       }
+    } else if (period === 'custom') {
+      // If custom date range is <= 31 days, generate day-by-day intervals
+      const sDay = dayjs(start)
+      const eDay = dayjs(end)
+      const diffDays = eDay.diff(sDay, 'day') + 1
+      if (diffDays <= 31) {
+        for (let i = 0; i < diffDays; i++) {
+          const d = sDay.add(i, 'day')
+          breakdown.push({
+            label: d.format('MMM D'),
+            subLabel: d.format('ddd'),
+            date: d.format('YYYY-MM-DD'),
+            boundary: 0,
+            dispatches: 0,
+            totalMinutes: 0,
+            totalHours: 0
+          })
+        }
+      }
     }
+
 
     // 3. Query Active Assignment (if any)
     const activeDoc = await DriverAssignment.findOne({
@@ -381,5 +395,145 @@ export const boundaryReportService = {
       breakdown,
       records
     }
+  },
+
+  async getFleetBoundaryReport(
+    period: ReportPeriod = 'daily',
+    dateInput?: string,
+    startDateInput?: string,
+    endDateInput?: string
+  ): Promise<FleetBoundaryReportData> {
+    await connectDB()
+
+    const { start, end, displayLabel, prevDate, nextDate, startDateStr, endDateStr } = resolveDateRange(
+      period,
+      dateInput,
+      startDateInput,
+      endDateInput
+    )
+
+    // 1. Fetch all registered taxis
+    const allTaxis = await TaxiUnit.find().sort({ taxiNumber: 1 })
+
+    // 2. Fetch completed assignments in period
+    const completedAssignments = await DriverAssignment.find({
+      status: 'Completed',
+      assignedAt: { $gte: start, $lte: end }
+    }).populate('driver', 'fullName driverId')
+
+    // 3. Fetch active assignments
+    const activeAssignments = await DriverAssignment.find({
+      status: 'Active'
+    }).populate('driver', 'fullName driverId')
+
+    // Group metrics by taxi ID
+    const taxiMap = new Map<string, {
+      dispatches: number
+      totalMinutes: number
+      boundary: number
+    }>()
+
+    for (const t of allTaxis) {
+      taxiMap.set(t._id.toString(), { dispatches: 0, totalMinutes: 0, boundary: 0 })
+    }
+
+    // Aggregate completed
+    for (const a of completedAssignments) {
+      const tId = (a.taxiUnit as any)?._id?.toString() || a.taxiUnit?.toString()
+      if (tId && taxiMap.has(tId)) {
+        const item = taxiMap.get(tId)!
+        item.dispatches += 1
+        item.totalMinutes += (a.totalMinutes || 0)
+        item.boundary += (a.boundary || 0)
+      }
+    }
+
+    // Aggregate active if timeIn falls in range
+    const now = new Date()
+    for (const a of activeAssignments) {
+      const activeTimeIn = new Date(a.timeIn)
+      if (activeTimeIn >= start && activeTimeIn <= end) {
+        const tId = (a.taxiUnit as any)?._id?.toString() || a.taxiUnit?.toString()
+        if (tId && taxiMap.has(tId)) {
+          const item = taxiMap.get(tId)!
+          const taxiDoc = allTaxis.find(t => t._id.toString() === tId)
+          const taxiType = taxiDoc?.taxiType || 'BATMAN'
+          const calc = calculateBoundary(taxiType, a.timeIn, now)
+          item.dispatches += 1
+          item.totalMinutes += calc.totalMinutes
+          item.boundary += calc.boundary
+        }
+      }
+    }
+
+    // Compile list of taxis
+    const taxisList: FleetTaxiSummary[] = []
+    let totalFleetDispatches = 0
+    let totalFleetMinutes = 0
+    let totalFleetBoundary = 0
+    let activeTaxisInPeriod = 0
+
+    for (const t of allTaxis) {
+      const idStr = t._id.toString()
+      const m = taxiMap.get(idStr) || { dispatches: 0, totalMinutes: 0, boundary: 0 }
+      const totalHours = Math.round((m.totalMinutes / 60) * 10) / 10
+
+      if (m.dispatches > 0) {
+        activeTaxisInPeriod += 1
+      }
+      totalFleetDispatches += m.dispatches
+      totalFleetMinutes += m.totalMinutes
+      totalFleetBoundary += m.boundary
+
+      taxisList.push({
+        _id: idStr,
+        taxiNumber: t.taxiNumber,
+        plateNumber: t.plateNumber,
+        brand: t.brand,
+        model: t.model,
+        vehicle: `${t.brand} ${t.model}`,
+        color: t.color,
+        taxiType: t.taxiType,
+        formattedTaxiType: formatTaxiType(t.taxiType),
+        status: t.status,
+        dispatches: m.dispatches,
+        totalMinutes: m.totalMinutes,
+        totalHours,
+        boundary: m.boundary,
+        formattedBoundary: formatBoundaryCurrency(m.boundary)
+      })
+    }
+
+    const totalFleetHours = Math.round((totalFleetMinutes / 60) * 10) / 10
+    const hTotal = Math.floor(totalFleetMinutes / 60)
+    const mTotal = totalFleetMinutes % 60
+    const formattedTotalHours = hTotal > 0 ? `${hTotal}h ${mTotal}m` : `${mTotal}m`
+    const avgBoundaryPerTaxi = allTaxis.length > 0 ? Math.round(totalFleetBoundary / allTaxis.length) : 0
+
+    return {
+      reportType: 'fleet',
+      period,
+      dateRange: {
+        startDate: startDateStr,
+        endDate: endDateStr,
+        displayLabel,
+        prevDate,
+        nextDate
+      },
+      summary: {
+        totalTaxis: allTaxis.length,
+        activeTaxisInPeriod,
+        totalDispatches: totalFleetDispatches,
+        totalMinutes: totalFleetMinutes,
+        totalHours: totalFleetHours,
+        formattedTotalHours,
+        totalBoundary: totalFleetBoundary,
+        formattedTotalBoundary: formatBoundaryCurrency(totalFleetBoundary),
+        avgBoundaryPerTaxi,
+        formattedAvgBoundaryPerTaxi: formatBoundaryCurrency(avgBoundaryPerTaxi)
+      },
+      taxis: taxisList
+    }
   }
 }
+

@@ -12,6 +12,7 @@ const navigation = computed(() => {
     { name: 'Taxi Assignment', href: '/assignments', icon: 'i-heroicons-key', roles: ['admin', 'dispatcher'] },
     { name: 'Drivers', href: '/drivers', icon: 'i-heroicons-user-group', roles: ['admin', 'dispatcher', 'hr'] },
     { name: 'Taxi Fleet', href: '/taxi-units', icon: 'i-lucide-car-taxi-front', roles: ['admin', 'dispatcher', 'hr'] },
+    { name: 'PDF Reports', href: '/reports', icon: 'i-heroicons-document-arrow-down', roles: ['admin', 'dispatcher'] },
     { name: 'Users', href: '/users', icon: 'i-heroicons-users', roles: ['admin'] },
     { name: 'Audit Logs', href: '/audit-logs', icon: 'i-heroicons-clipboard-document-list', roles: ['admin'] }
   ]
