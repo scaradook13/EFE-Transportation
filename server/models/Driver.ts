@@ -163,4 +163,4 @@ const DriverSchema = new Schema<IDriver>(
 
 
 
-export const Driver = mongoose.models.Driver || mongoose.model<IDriver>('Driver', DriverSchema)
+export const Driver = (mongoose.models.Driver || mongoose.model<IDriver>('Driver', DriverSchema)) as mongoose.Model<IDriver>

@@ -44,7 +44,7 @@ async function seed() {
     { username: 'admin', password: hashedPassword, fullName: 'System Administrator', role: 'admin', isActive: true },
     { username: 'dispatcher1', password: dispatcherPassword, fullName: 'Juan dela Cruz', role: 'dispatcher', isActive: true },
     { username: 'hr1', password: hrPassword, fullName: 'Maria Santos', role: 'hr', isActive: true }
-  ])
+  ] as any)
 
   console.log('👤 Created users:')
   for (const u of users) {
@@ -84,7 +84,7 @@ async function seed() {
     { driverId: 'DRV-0005', fullName: 'Emmanuel Torres', address: '654 Luna St, Caloocan', contactNumber: '09211234571', birthDate: new Date('1992-09-18'), emergencyContact: { name: 'Josie Torres', relationship: 'Spouse', contactNumber: '09218765435' }, licenseNumber: 'N01-23-555666', licenseExpiration: new Date('2026-09-18'), employmentStatus: 'Active', operationalStatus: 'Available', createdBy: adminUser._id }
   ]
 
-  const drivers = await Driver.insertMany(driversData)
+  const drivers = await Driver.insertMany(driversData as any)
   console.log(`🚗 Created ${drivers.length} drivers`)
 
   // Create Taxi Units
@@ -95,20 +95,30 @@ async function seed() {
     model: { type: String, required: true },
     year: { type: Number, required: true },
     color: { type: String, required: true },
+    taxiType: { type: String, enum: ['BATMAN', 'SUPERMAN'], default: 'BATMAN', required: true },
     status: { type: String, enum: ['Available', 'In Use', 'Maintenance'], default: 'Available' }
   }, { timestamps: true })
 
   const TaxiUnit = mongoose.models.TaxiUnit || mongoose.model('TaxiUnit', TaxiUnitSchema)
 
-  const taxiUnitsData = [
-    { taxiNumber: 'TX-001', plateNumber: 'ABC 1234', brand: 'Toyota', model: 'Vios', year: 2022, color: 'Yellow', status: 'Available' },
-    { taxiNumber: 'TX-002', plateNumber: 'DEF 5678', brand: 'Mitsubishi', model: 'Mirage G4', year: 2021, color: 'Yellow', status: 'Available' },
-    { taxiNumber: 'TX-003', plateNumber: 'GHI 9012', brand: 'Honda', model: 'City', year: 2023, color: 'Yellow', status: 'Available' },
-    { taxiNumber: 'TX-004', plateNumber: 'JKL 3456', brand: 'Toyota', model: 'Vios', year: 2020, color: 'Yellow', status: 'Maintenance' },
-    { taxiNumber: 'TX-005', plateNumber: 'MNO 7890', brand: 'Suzuki', model: 'Dzire', year: 2022, color: 'Yellow', status: 'Available' }
+  const taxiUnitsData: Array<{
+    taxiNumber: string
+    plateNumber: string
+    brand: string
+    model: string
+    year: number
+    color: string
+    taxiType: 'BATMAN' | 'SUPERMAN'
+    status: 'Available' | 'In Use' | 'Maintenance'
+  }> = [
+    { taxiNumber: 'TX-001', plateNumber: 'ABC 1234', brand: 'Toyota', model: 'Vios', year: 2022, color: 'Yellow', taxiType: 'BATMAN', status: 'Available' },
+    { taxiNumber: 'TX-002', plateNumber: 'DEF 5678', brand: 'Mitsubishi', model: 'Mirage G4', year: 2021, color: 'Yellow', taxiType: 'SUPERMAN', status: 'Available' },
+    { taxiNumber: 'TX-003', plateNumber: 'GHI 9012', brand: 'Honda', model: 'City', year: 2023, color: 'Yellow', taxiType: 'BATMAN', status: 'Available' },
+    { taxiNumber: 'TX-004', plateNumber: 'JKL 3456', brand: 'Toyota', model: 'Vios', year: 2020, color: 'Yellow', taxiType: 'SUPERMAN', status: 'Maintenance' },
+    { taxiNumber: 'TX-005', plateNumber: 'MNO 7890', brand: 'Suzuki', model: 'Dzire', year: 2022, color: 'Yellow', taxiType: 'BATMAN', status: 'Available' }
   ]
 
-  const taxiUnits = await TaxiUnit.insertMany(taxiUnitsData)
+  const taxiUnits = await TaxiUnit.insertMany(taxiUnitsData as any)
   console.log(`🚕 Created ${taxiUnits.length} taxi units`)
 
   // Create sample Driver Assignments
@@ -123,6 +133,9 @@ async function seed() {
     timeOut: { type: Date, default: null },
     totalMinutes: { type: Number, default: null },
     totalHours: { type: Number, default: null },
+    boundary: { type: Number, default: null },
+    baseBoundary: { type: Number, default: null },
+    overtimeHours: { type: Number, default: null },
     status: { type: String, enum: ['Active', 'Completed'], default: 'Active' },
     remarks: { type: String, default: '' }
   }, { timestamps: true })
@@ -137,7 +150,7 @@ async function seed() {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const dateStr = today.getFullYear().toString() + String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0')
 
-  // Yesterday completed assignment
+  // Yesterday completed assignment (< 16 hrs)
   const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
   const timeIn1 = new Date(yesterday)
@@ -146,18 +159,34 @@ async function seed() {
   timeOut1.setHours(17, 30, 0, 0)
   const mins1 = Math.round((timeOut1.getTime() - timeIn1.getTime()) / 60000)
 
-  // Today completed assignment
+  // Today completed assignment (17 hrs: overtime)
   const timeIn2 = new Date(today)
-  timeIn2.setHours(7, 0, 0, 0)
+  timeIn2.setHours(4, 0, 0, 0)
   const timeOut2 = new Date(today)
-  timeOut2.setHours(16, 0, 0, 0)
+  timeOut2.setHours(21, 0, 0, 0)
   const mins2 = Math.round((timeOut2.getTime() - timeIn2.getTime()) / 60000)
 
-  const assignmentsData = [
+  const assignmentsData: Array<{
+    assignmentNumber: string
+    driver: mongoose.Types.ObjectId
+    taxiUnit: mongoose.Types.ObjectId
+    issuedBy: mongoose.Types.ObjectId
+    assignedAt: Date
+    returnedAt: Date
+    timeIn: Date
+    timeOut: Date
+    totalMinutes: number
+    totalHours: number
+    boundary: number
+    baseBoundary: number
+    overtimeHours: number
+    status: 'Active' | 'Completed'
+    remarks: string
+  }> = [
     {
       assignmentNumber: `ASN-${String(yesterday.getFullYear()) + String(yesterday.getMonth() + 1).padStart(2, '0') + String(yesterday.getDate()).padStart(2, '0')}-0001`,
-      driver: typedDrivers[0]._id,
-      taxiUnit: typedTaxis[0]._id,
+      driver: typedDrivers[0]!._id,
+      taxiUnit: typedTaxis[0]!._id,
       issuedBy: dispatcherUser._id,
       assignedAt: timeIn1,
       returnedAt: timeOut1,
@@ -165,13 +194,16 @@ async function seed() {
       timeOut: timeOut1,
       totalMinutes: mins1,
       totalHours: Math.round((mins1 / 60) * 100) / 100,
+      boundary: 0,
+      baseBoundary: 920,
+      overtimeHours: 0,
       status: 'Completed',
       remarks: 'Normal shift'
     },
     {
       assignmentNumber: `ASN-${dateStr}-0001`,
-      driver: typedDrivers[1]._id,
-      taxiUnit: typedTaxis[1]._id,
+      driver: typedDrivers[1]!._id,
+      taxiUnit: typedTaxis[1]!._id,
       issuedBy: dispatcherUser._id,
       assignedAt: timeIn2,
       returnedAt: timeOut2,
@@ -179,12 +211,15 @@ async function seed() {
       timeOut: timeOut2,
       totalMinutes: mins2,
       totalHours: Math.round((mins2 / 60) * 100) / 100,
+      boundary: 1090,
+      baseBoundary: 990,
+      overtimeHours: 1,
       status: 'Completed',
-      remarks: ''
+      remarks: 'Overtime shift (Superman)'
     }
   ]
 
-  await DriverAssignment.insertMany(assignmentsData)
+  await DriverAssignment.insertMany(assignmentsData as any)
   console.log(`📋 Created ${assignmentsData.length} sample assignments`)
 
   console.log('\n✅ Seed completed successfully!')

@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import type { ApiResponse, PaginatedResponse } from '~/types'
+import type { ApiResponse, PaginatedResponse, TaxiType } from '~/types'
 
 export interface Assignment {
   _id: string
   assignmentNumber: string
   driver: { _id: string; fullName: string; driverId: string; photo?: string; operationalStatus: string } | string
-  taxiUnit: { _id: string; taxiNumber: string; plateNumber: string; brand?: string; model?: string; color?: string; status: string } | string
+  taxiUnit: { _id: string; taxiNumber: string; plateNumber: string; brand?: string; model?: string; color?: string; status: string; taxiType?: TaxiType } | string
   issuedBy: { _id: string; fullName: string; username: string } | string
   assignedAt: string
   returnedAt: string | null
@@ -13,6 +13,9 @@ export interface Assignment {
   timeOut: string | null
   totalMinutes: number | null
   totalHours: number | null
+  boundary?: number | null
+  baseBoundary?: number | null
+  overtimeHours?: number | null
   status: 'Active' | 'Completed'
   remarks: string
 }

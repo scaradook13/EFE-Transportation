@@ -87,6 +87,10 @@ export const taxiUnitSchema = z.object({
   model: z.string().min(1, 'Model is required.'),
   year: z.number({ required_error: 'Year is required.', invalid_type_error: 'Year must be a number.' }).int().max(new Date().getFullYear(), `Year cannot be greater than ${new Date().getFullYear()}.`),
   color: z.string().min(1, 'Color is required.'),
+  taxiType: z.preprocess(
+    val => (typeof val === 'string' ? val.trim().toUpperCase() : val),
+    z.enum(['BATMAN', 'SUPERMAN'], { required_error: 'Taxi type is required.' })
+  ),
   status: z.enum(['Available', 'In Use', 'Maintenance']).optional()
 })
 

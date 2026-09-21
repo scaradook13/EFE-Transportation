@@ -90,7 +90,7 @@ export const assignmentRepository = {
     const [data, total] = await Promise.all([
       DriverAssignment.find(query)
         .populate('driver', 'fullName driverId operationalStatus')
-        .populate('taxiUnit', 'taxiNumber plateNumber status')
+        .populate('taxiUnit', 'taxiNumber plateNumber status taxiType')
         .populate('issuedBy', 'fullName username role')
         .sort({ assignedAt: -1 })
         .skip(skip)
@@ -104,7 +104,7 @@ export const assignmentRepository = {
   async findActive() {
     return DriverAssignment.find({ status: 'Active' })
       .populate('driver', 'fullName driverId photo operationalStatus')
-      .populate('taxiUnit', 'taxiNumber plateNumber brand model color status')
+      .populate('taxiUnit', 'taxiNumber plateNumber brand model color status taxiType')
       .populate('issuedBy', 'fullName username')
       .sort({ assignedAt: -1 })
   },
@@ -113,7 +113,7 @@ export const assignmentRepository = {
     const skip = (page - 1) * limit
     const [data, total] = await Promise.all([
       DriverAssignment.find({ driver: driverId })
-        .populate('taxiUnit', 'taxiNumber plateNumber brand model')
+        .populate('taxiUnit', 'taxiNumber plateNumber brand model taxiType')
         .populate('issuedBy', 'fullName username')
         .sort({ assignedAt: -1 })
         .skip(skip)
@@ -148,7 +148,7 @@ export const assignmentRepository = {
   async findById(id: string) {
     return DriverAssignment.findById(id)
       .populate('driver', 'fullName driverId operationalStatus')
-      .populate('taxiUnit', 'taxiNumber plateNumber status')
+      .populate('taxiUnit', 'taxiNumber plateNumber status taxiType')
       .populate('issuedBy', 'fullName username')
   },
 

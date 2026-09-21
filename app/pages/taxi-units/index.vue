@@ -21,17 +21,18 @@ const formLoading = ref(false)
 const formError = ref('')
 
 import { taxiUnitSchema } from '~~/shared/utils/validations'
+import { formatTaxiType } from '~~/shared/utils/boundary'
 import { useFormValidation } from '~/composables/useFormValidation'
 
 const form = reactive<CreateTaxiUnitPayload>({
   taxiNumber: '', plateNumber: '', brand: '', model: '',
-  year: new Date().getFullYear(), color: '', status: 'Available'
+  year: new Date().getFullYear(), color: '', taxiType: 'BATMAN', status: 'Available'
 })
 
 const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(taxiUnitSchema, form)
 
 const resetForm = () => {
-  Object.assign(form, { taxiNumber: '', plateNumber: '', brand: '', model: '', year: new Date().getFullYear(), color: '', status: 'Available' })
+  Object.assign(form, { taxiNumber: '', plateNumber: '', brand: '', model: '', year: new Date().getFullYear(), color: '', taxiType: 'BATMAN', status: 'Available' })
   clearErrors()
   editingUnit.value = null
 }
@@ -56,7 +57,7 @@ const openEdit = (unit: TaxiUnit) => {
   editingUnit.value = unit
   formError.value = ''
   clearErrors()
-  Object.assign(form, { ...unit })
+  Object.assign(form, { ...unit, taxiType: unit.taxiType || 'BATMAN' })
   showModal.value = true
 }
 
@@ -122,8 +123,11 @@ const getTaxiColorHex = (colorName: string) => {
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-white">Taxi Fleet</h1>
-          <p class="text-sm text-slate-400 mt-0.5">Manage all registered taxi units</p>
+          <p class="text-sm text-slate-400 mt-0.5">
+            Manage registered taxi units<span v-if="authStore.canViewBoundaryReports"> • Click any taxi to view its boundary report</span>
+          </p>
         </div>
+
         <button v-if="authStore.canManageTaxis" class="btn-primary" @click="openCreate">
           <UIcon name="i-heroicons-plus" class="w-4 h-4" /> Add Taxi Unit
         </button>
@@ -158,23 +162,56 @@ const getTaxiColorHex = (colorName: string) => {
               <thead>
                 <tr>
                   <th>Taxi #</th>
+                  <th>Type</th>
                   <th>Plate No.</th>
                   <th>Vehicle</th>
                   <th>Year</th>
                   <th>Color</th>
                   <th>Status</th>
-                  <th v-if="authStore.canManageTaxis">Actions</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="unit in taxiStore.taxiUnits" :key="unit._id">
+                <tr
+                  v-for="unit in taxiStore.taxiUnits"
+                  :key="unit._id"
+                  :class="[
+                    'transition-colors',
+                    authStore.canViewBoundaryReports ? 'cursor-pointer hover:bg-white/[0.04] group' : ''
+                  ]"
+                  @click="authStore.canViewBoundaryReports ? navigateTo(`/taxi-units/${unit._id}`) : null"
+                >
                   <td>
                     <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-lg bg-yellow-900/20 border border-yellow-500/20 flex items-center justify-center">
+                      <div class="w-8 h-8 rounded-lg bg-yellow-900/20 border border-yellow-500/20 flex items-center justify-center group-hover:border-yellow-500/50 transition-colors">
                         <UIcon name="i-lucide-car-taxi-front" class="w-4 h-4 text-yellow-400" />
                       </div>
-                      <span class="font-bold text-white">{{ unit.taxiNumber }}</span>
+                      <div>
+                        <span
+                          class="font-bold text-white transition-colors flex items-center gap-1.5"
+                          :class="authStore.canViewBoundaryReports ? 'group-hover:text-yellow-400' : ''"
+                        >
+                          {{ unit.taxiNumber }}
+                          <UIcon
+                            v-if="authStore.canViewBoundaryReports"
+                            name="i-heroicons-arrow-top-right-on-square"
+                            class="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity"
+                          />
+                        </span>
+                      </div>
                     </div>
+                  </td>
+                  <td>
+                    <span
+                      :class="[
+                        'px-2.5 py-0.5 rounded-full text-xs font-semibold border',
+                        unit.taxiType === 'SUPERMAN'
+                          ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                          : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                      ]"
+                    >
+                      {{ formatTaxiType(unit.taxiType) }}
+                    </span>
                   </td>
                   <td><span class="font-mono text-sm text-slate-300 uppercase">{{ unit.plateNumber }}</span></td>
                   <td>
@@ -196,18 +233,29 @@ const getTaxiColorHex = (colorName: string) => {
                   <td>
                     <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusClass(unit.status)]">{{ unit.status }}</span>
                   </td>
-                  <td v-if="authStore.canManageTaxis">
-                    <div class="flex items-center gap-2">
-                      <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be edited until it has been returned.' : undefined">
-                        <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="unit.status === 'In Use'" @click="openEdit(unit)">
-                          <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
-                        </button>
-                      </div>
-                      <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be deleted.' : undefined">
-                        <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="unit.status === 'In Use'" @click="confirmDelete(unit)">
-                          <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
-                        </button>
-                      </div>
+                  <td>
+                    <div class="flex items-center gap-1.5">
+                      <button
+                        v-if="authStore.canViewBoundaryReports"
+                        class="p-1.5 rounded-lg transition-colors hover:bg-emerald-500/10 text-emerald-400"
+                        title="View Boundary Report"
+                        @click.stop="navigateTo(`/taxi-units/${unit._id}`)"
+                      >
+                        <UIcon name="i-heroicons-document-chart-bar" class="w-4 h-4" />
+                      </button>
+
+                      <template v-if="authStore.canManageTaxis">
+                        <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be edited until it has been returned.' : undefined">
+                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="unit.status === 'In Use'" @click.stop="openEdit(unit)">
+                            <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
+                          </button>
+                        </div>
+                        <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be deleted.' : undefined">
+                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="unit.status === 'In Use'" @click.stop="confirmDelete(unit)">
+                            <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
+                      </template>
                     </div>
                   </td>
                 </tr>
@@ -255,6 +303,14 @@ const getTaxiColorHex = (colorName: string) => {
                   <p v-if="errors.taxiNumber" class="mt-1 text-xs text-red-400">{{ errors.taxiNumber }}</p>
                 </div>
                 <div>
+                  <label class="form-label">Taxi Type *</label>
+                  <select v-model="form.taxiType" @blur="touch('taxiType')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.taxiType }" required>
+                    <option value="BATMAN">Batman (₱920 base)</option>
+                    <option value="SUPERMAN">Superman (₱990 base)</option>
+                  </select>
+                  <p v-if="errors.taxiType" class="mt-1 text-xs text-red-400">{{ errors.taxiType }}</p>
+                </div>
+                <div>
                   <label class="form-label">Plate Number *</label>
                   <input v-model="form.plateNumber" @blur="touch('plateNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.plateNumber }" required placeholder="ABC 1234" />
                   <p v-if="errors.plateNumber" class="mt-1 text-xs text-red-400">{{ errors.plateNumber }}</p>
@@ -288,7 +344,7 @@ const getTaxiColorHex = (colorName: string) => {
                   </div>
                   <p v-if="errors.color" class="mt-1 text-xs text-red-400">{{ errors.color }}</p>
                 </div>
-                <div class="col-span-2">
+                <div>
                   <label class="form-label">Status</label>
                   <select v-model="form.status" @blur="touch('status')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.status }">
                     <option value="Available">Available</option>
