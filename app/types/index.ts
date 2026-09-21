@@ -78,6 +78,7 @@ export interface CreateDriverPayload {
 
 // ==================== Taxi Unit Types ====================
 export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
+export type TaxiType = 'BATMAN' | 'SUPERMAN'
 
 export interface TaxiUnit {
   _id: string
@@ -87,6 +88,7 @@ export interface TaxiUnit {
   model: string
   year: number
   color: string
+  taxiType: TaxiType
   status: TaxiUnitStatus
   createdAt: string
   updatedAt: string
@@ -99,6 +101,7 @@ export interface CreateTaxiUnitPayload {
   model: string
   year: number
   color: string
+  taxiType?: TaxiType
   status?: TaxiUnitStatus
 }
 
@@ -200,3 +203,81 @@ export interface PaginationMeta {
   limit: number
   pages: number
 }
+
+// ==================== Boundary Report Types ====================
+export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly'
+
+export interface BreakdownItem {
+  label: string
+  subLabel?: string
+  date: string
+  boundary: number
+  dispatches: number
+  totalMinutes: number
+  totalHours: number
+}
+
+export interface BoundaryReportData {
+  taxi: {
+    _id: string
+    taxiNumber: string
+    plateNumber: string
+    brand: string
+    model: string
+    year: number
+    color: string
+    taxiType: TaxiType
+    formattedTaxiType: string
+    status: string
+  }
+  period: ReportPeriod
+  dateRange: {
+    startDate: string
+    endDate: string
+    displayLabel: string
+    prevDate: string
+    nextDate: string
+  }
+  activeDeployment: {
+    assignmentId: string
+    assignmentNumber: string
+    driver: {
+      _id: string
+      fullName: string
+      driverId: string
+    }
+    timeIn: string
+    elapsedMinutes: number
+    elapsedHours: number
+    formattedElapsed: string
+    currentBoundary: number
+    baseBoundary: number
+    overtimeHours: number
+  } | null
+  summary: {
+    totalBoundary: number
+    formattedTotalBoundary: string
+    totalDispatches: number
+    totalMinutes: number
+    totalHours: number
+    formattedTotalHours: string
+    avgBoundary: number
+    formattedAvgBoundary: string
+  }
+  breakdown: BreakdownItem[]
+  records: Array<{
+    _id: string
+    assignmentNumber: string
+    driverName: string
+    driverId: string
+    timeIn: string
+    timeOut: string | null
+    duration: string
+    totalMinutes: number
+    boundary: number
+    formattedBoundary: string
+    overtimeHours: number
+    status: 'Active' | 'Completed'
+  }>
+}
+

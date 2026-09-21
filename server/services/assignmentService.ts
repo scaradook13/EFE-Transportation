@@ -1,6 +1,8 @@
 import { assignmentRepository } from '../repositories/assignmentRepository'
 import { Driver } from '../models/Driver'
 import { TaxiUnit } from '../models/TaxiUnit'
+import { DriverAssignment } from '../models/DriverAssignment'
+import { calculateBoundary } from '~~/shared/utils/boundary'
 
 export interface IssueDto {
   driverId: string
@@ -77,23 +79,31 @@ export const assignmentService = {
     const diffMs = now.getTime() - new Date(assignment.timeIn).getTime()
     const gracePeriodMs = 15 * 60000
     const dutyMs = Math.max(0, diffMs - gracePeriodMs)
-    
+
     const totalMinutes = Math.round(dutyMs / 60000)
     const totalHours = Math.round((totalMinutes / 60) * 100) / 100
 
-    // Update assignment
-    const driverAssignment = await import('../models/DriverAssignment')
-    await driverAssignment.DriverAssignment.findByIdAndUpdate(dto.assignmentId, {
+    // Fetch taxi to get taxiType for boundary calculation
+    const driverId = (assignment.driver as any)?._id || assignment.driver
+    const taxiId = (assignment.taxiUnit as any)?._id || assignment.taxiUnit
+    const taxi = await TaxiUnit.findById(taxiId)
+    const taxiType = taxi?.taxiType || 'BATMAN'
+
+    // Authoritative backend boundary computation
+    const boundaryCalc = calculateBoundary(taxiType, assignment.timeIn, now)
+
+    // Update assignment with final hours and frozen boundary
+    await DriverAssignment.findByIdAndUpdate(dto.assignmentId, {
       returnedAt: now,
       timeOut: now,
       totalMinutes,
       totalHours,
+      boundary: boundaryCalc.boundary,
+      baseBoundary: boundaryCalc.baseBoundary,
+      overtimeHours: boundaryCalc.overtimeHours,
       status: 'Completed',
       remarks: dto.remarks || assignment.remarks
     })
-
-    const driverId = (assignment.driver as any)._id || assignment.driver
-    const taxiId = (assignment.taxiUnit as any)._id || assignment.taxiUnit
 
     // Reset driver and taxi status
     await Promise.all([
@@ -105,6 +115,10 @@ export const assignmentService = {
       assignmentId: assignment._id,
       totalMinutes,
       totalHours,
+      boundary: boundaryCalc.boundary,
+      baseBoundary: boundaryCalc.baseBoundary,
+      overtimeHours: boundaryCalc.overtimeHours,
+      taxiType: boundaryCalc.taxiType,
       timeIn: assignment.timeIn,
       timeOut: now
     }
@@ -114,8 +128,6 @@ export const assignmentService = {
     const now = new Date()
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-
-    const { DriverAssignment } = await import('../models/DriverAssignment')
 
     const [
       availableDrivers,
@@ -145,7 +157,7 @@ export const assignmentService = {
     // Recent active assignments
     const activeAssignments = await DriverAssignment.find({ status: 'Active' })
       .populate('driver', 'fullName driverId')
-      .populate('taxiUnit', 'taxiNumber plateNumber')
+      .populate('taxiUnit', 'taxiNumber plateNumber taxiType')
       .populate('issuedBy', 'fullName')
       .sort({ assignedAt: -1 })
       .limit(5)

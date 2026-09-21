@@ -1,6 +1,8 @@
-import mongoose, { Document, Schema } from 'mongoose'
+import mongoose, { Schema, type Document } from 'mongoose'
+import type { TaxiType } from '~~/shared/utils/boundary'
 
 export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
+export type { TaxiType }
 
 export interface ITaxiUnit extends Document {
   _id: mongoose.Types.ObjectId
@@ -10,6 +12,7 @@ export interface ITaxiUnit extends Document {
   model: string
   year: number
   color: string
+  taxiType: TaxiType
   status: TaxiUnitStatus
   createdAt: Date
   updatedAt: Date
@@ -53,6 +56,18 @@ const TaxiUnitSchema = new Schema<ITaxiUnit>(
       required: [true, 'Color is required'],
       trim: true
     },
+    taxiType: {
+      type: String,
+      enum: {
+        values: ['BATMAN', 'SUPERMAN'],
+        message: '{VALUE} is not a valid taxi type'
+      },
+      default: 'BATMAN',
+      required: [true, 'Taxi type is required'],
+      uppercase: true,
+      trim: true,
+      index: true
+    },
     status: {
       type: String,
       enum: {
@@ -68,4 +83,4 @@ const TaxiUnitSchema = new Schema<ITaxiUnit>(
   }
 )
 
-export const TaxiUnit = mongoose.models.TaxiUnit || mongoose.model<ITaxiUnit>('TaxiUnit', TaxiUnitSchema)
+export const TaxiUnit = (mongoose.models.TaxiUnit || mongoose.model<ITaxiUnit>('TaxiUnit', TaxiUnitSchema)) as mongoose.Model<ITaxiUnit>

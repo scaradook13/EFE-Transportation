@@ -3,6 +3,9 @@ import { useAssignmentStore } from '~/stores/assignments'
 import { assignmentIssueSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
 import { startAuthentication } from '@simplewebauthn/browser'
+import { calculateBoundary, formatTaxiType, formatBoundaryCurrency, type BoundaryCalculationResult } from '~~/shared/utils/boundary'
+import type { TaxiType } from '~/types'
+
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 useHead({ title: 'Taxi Assignment — EFE Taxi Dispatch System' })
@@ -63,7 +66,7 @@ watch(searchQuery, (val) => {
 
 // --- Available Drivers & Taxis for issue form ---
 const availableDrivers = ref<{ _id: string; fullName: string; driverId: string }[]>([])
-const availableTaxis = ref<{ _id: string; taxiNumber: string; plateNumber: string; brand: string; model: string }[]>([])
+const availableTaxis = ref<{ _id: string; taxiNumber: string; plateNumber: string; brand: string; model: string; taxiType?: TaxiType }[]>([])
 
 const canIssue = computed(() => authStore.user?.role === 'dispatcher')
 
@@ -175,7 +178,11 @@ const handleReturn = async () => {
     const result = await assignmentStore.returnTaxi(selectedAssignment.value._id, returnRemarks.value) as any
     const hours = Math.floor(result.totalMinutes / 60)
     const mins = result.totalMinutes % 60
-    toast.add({ title: '✅ Taxi returned successfully!', description: `Hours worked: ${hours}h ${mins}m`, color: 'success' })
+    toast.add({ 
+      title: '✅ Taxi returned successfully!', 
+      description: `Boundary: ${formatBoundaryCurrency(result.boundary)} • Hours worked: ${hours}h ${mins}m`, 
+      color: 'success' 
+    })
     showReturnModal.value = false
     await loadData()
   } catch (err: any) {
@@ -194,6 +201,23 @@ const getTaxiPlate = (a: (typeof assignmentStore.activeAssignments)[0]) =>
   (typeof a.taxiUnit === 'object' && a.taxiUnit !== null) ? (a.taxiUnit as any).plateNumber : '—'
 const getIssuedBy = (a: (typeof assignmentStore.activeAssignments)[0]) =>
   (typeof a.issuedBy === 'object' && a.issuedBy !== null) ? (a.issuedBy as any).fullName : '—'
+
+const getTaxiType = (a: any): TaxiType => {
+  if (!a || !a.taxiUnit) return 'BATMAN'
+  if (typeof a.taxiUnit === 'object' && a.taxiUnit !== null && a.taxiUnit.taxiType) {
+    return a.taxiUnit.taxiType
+  }
+  return 'BATMAN'
+}
+
+const getActiveBoundaryCalc = (a: any): BoundaryCalculationResult => {
+  return calculateBoundary(getTaxiType(a), a.timeIn, currentTime.value)
+}
+
+const selectedReturnBoundary = computed<BoundaryCalculationResult | null>(() => {
+  if (!selectedAssignment.value) return null
+  return calculateBoundary(getTaxiType(selectedAssignment.value), selectedAssignment.value.timeIn, currentTime.value)
+})
 
 const formatTime = (d: string) => new Date(d).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true })
 const formatDate = (d: string) => new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -304,9 +328,12 @@ const formatDutyTime = (timeIn: string) => {
                 <th>Assignment #</th>
                 <th>Driver</th>
                 <th>Taxi Unit</th>
+                <th>Type</th>
                 <th>Issued By</th>
                 <th>Time In</th>
                 <th>Elapsed</th>
+                <th>Boundary</th>
+                <th>Overtime</th>
                 <th>Notes</th>
                 <th v-if="canIssue">Action</th>
               </tr>
@@ -322,6 +349,18 @@ const formatDutyTime = (timeIn: string) => {
                   <p class="text-white text-sm font-medium">{{ getTaxiNumber(a) }}</p>
                   <p class="text-slate-500 text-xs font-mono">{{ getTaxiPlate(a) }}</p>
                 </td>
+                <td>
+                  <span
+                    :class="[
+                      'px-2.5 py-0.5 rounded-full text-xs font-semibold border',
+                      getTaxiType(a) === 'SUPERMAN'
+                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                        : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                    ]"
+                  >
+                    {{ formatTaxiType(getTaxiType(a)) }}
+                  </span>
+                </td>
                 <td class="text-slate-400 text-sm">{{ getIssuedBy(a) }}</td>
                 <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatTime(a.timeIn) }}</td>
                 <td>
@@ -332,6 +371,35 @@ const formatDutyTime = (timeIn: string) => {
                   <div v-else>
                     <div class="text-[10px] text-green-500 font-bold uppercase tracking-wider mb-0.5">On Duty</div>
                     <div class="font-mono text-xs text-green-400">{{ formatDutyTime(a.timeIn) }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div>
+                    <span
+                      class="font-mono text-xs font-bold"
+                      :class="getActiveBoundaryCalc(a).boundary > 0 ? 'text-amber-400' : 'text-slate-400'"
+                    >
+                      {{ formatBoundaryCurrency(getActiveBoundaryCalc(a).boundary) }}
+                    </span>
+                    <span v-if="getActiveBoundaryCalc(a).elapsedHours < 16" class="text-[10px] text-slate-500 block">
+                      &lt; 16 hrs
+                    </span>
+                    <span v-else class="text-[10px] text-slate-400 block">
+                      Base: ₱{{ getActiveBoundaryCalc(a).baseBoundary }}
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <div v-if="getActiveBoundaryCalc(a).overtimeHours > 0">
+                    <span class="font-mono text-xs font-semibold text-purple-400">
+                      +{{ getActiveBoundaryCalc(a).overtimeHours }}h
+                    </span>
+                    <span class="text-[10px] text-purple-300 block">
+                      (+₱{{ getActiveBoundaryCalc(a).overtimeHours * 100 }})
+                    </span>
+                  </div>
+                  <div v-else>
+                    <span class="font-mono text-xs text-slate-500">0h</span>
                   </div>
                 </td>
                 <td>
@@ -410,11 +478,13 @@ const formatDutyTime = (timeIn: string) => {
                   <th>Assignment #</th>
                   <th>Driver</th>
                   <th>Taxi</th>
+                  <th>Type</th>
                   <th>Issued By</th>
                   <th>Date</th>
                   <th>Time In</th>
                   <th>Time Out</th>
                   <th>Hours</th>
+                  <th>Boundary</th>
                   <th>Notes</th>
                   <th>Status</th>
                 </tr>
@@ -427,6 +497,18 @@ const formatDutyTime = (timeIn: string) => {
                     <p class="text-white text-sm">{{ getTaxiNumber(a) }}</p>
                     <p class="text-slate-500 text-xs font-mono">{{ getTaxiPlate(a) }}</p>
                   </td>
+                  <td>
+                    <span
+                      :class="[
+                        'px-2 py-0.5 rounded-full text-xs font-semibold border',
+                        getTaxiType(a) === 'SUPERMAN'
+                          ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                          : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                      ]"
+                    >
+                      {{ formatTaxiType(getTaxiType(a)) }}
+                    </span>
+                  </td>
                   <td class="text-slate-400 text-sm">{{ getIssuedBy(a) }}</td>
                   <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatDate(a.assignedAt) }}</td>
                   <td class="text-slate-400 text-xs whitespace-nowrap">{{ formatTime(a.timeIn) }}</td>
@@ -438,6 +520,12 @@ const formatDutyTime = (timeIn: string) => {
                   </td>
                   <td class="text-xs font-mono" :style="{ color: a.totalHours ? '#f9a825' : '#64748b' }">
                     {{ formatDuration(a.totalMinutes) }}
+                  </td>
+                  <td class="text-xs font-mono">
+                    <span v-if="a.status === 'Completed'" class="font-bold text-amber-400">
+                      {{ formatBoundaryCurrency(a.boundary) }}
+                    </span>
+                    <span v-else class="text-slate-500">—</span>
                   </td>
                   <td>
                     <NotesViewer :content="a.remarks" title="Assignment Notes" />
@@ -508,7 +596,7 @@ const formatDutyTime = (timeIn: string) => {
                 <select v-model="issueForm.taxiUnitId" @blur="touchIssue('taxiUnitId')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': issueErrors.taxiUnitId }">
                   <option value="">— Select Available Taxi —</option>
                   <option v-for="t in availableTaxis" :key="t._id" :value="t._id">
-                    {{ t.taxiNumber }} — {{ t.plateNumber }} ({{ t.brand }} {{ t.model }})
+                    {{ t.taxiNumber }} — {{ t.plateNumber }} ({{ t.brand }} {{ t.model }}) • {{ formatTaxiType(t.taxiType) }} (₱{{ t.taxiType === 'SUPERMAN' ? '990' : '920' }} base)
                   </option>
                 </select>
                 <p v-if="issueErrors.taxiUnitId" class="mt-1 text-xs text-red-400">{{ issueErrors.taxiUnitId }}</p>
@@ -561,7 +649,7 @@ const formatDutyTime = (timeIn: string) => {
               <p class="text-sm text-red-400 font-medium">{{ returnError }}</p>
             </div>
 
-            <div class="glass-card p-4 mb-5 space-y-2" style="background: rgba(255,255,255,0.03);">
+            <div class="glass-card p-4 mb-4 space-y-2" style="background: rgba(255,255,255,0.03);">
               <div class="flex justify-between text-sm">
                 <span class="text-slate-400">Driver</span>
                 <span class="text-white font-medium">{{ getDriverName(selectedAssignment) }}</span>
@@ -569,6 +657,19 @@ const formatDutyTime = (timeIn: string) => {
               <div class="flex justify-between text-sm">
                 <span class="text-slate-400">Taxi</span>
                 <span class="text-white font-medium">{{ getTaxiNumber(selectedAssignment) }} ({{ getTaxiPlate(selectedAssignment) }})</span>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-slate-400">Taxi Type</span>
+                <span
+                  :class="[
+                    'px-2 py-0.5 rounded-full text-xs font-semibold border',
+                    getTaxiType(selectedAssignment) === 'SUPERMAN'
+                      ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
+                      : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                  ]"
+                >
+                  {{ formatTaxiType(getTaxiType(selectedAssignment)) }}
+                </span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-slate-400">Time In</span>
@@ -585,6 +686,28 @@ const formatDutyTime = (timeIn: string) => {
                 <span class="text-slate-400">Duty Time</span>
                 <span style="color: #4ade80;" class="font-mono font-bold">{{ formatDutyTime(selectedAssignment.timeIn) }}</span>
               </div>
+              <div v-if="selectedReturnBoundary" class="flex justify-between text-sm pt-1 border-t border-white/5">
+                <span class="text-slate-400">Overtime Hours</span>
+                <span class="font-mono text-purple-400 font-semibold">
+                  {{ selectedReturnBoundary.overtimeHours }}h
+                  <span v-if="selectedReturnBoundary.overtimeHours > 0" class="text-xs text-purple-300">
+                    (+₱{{ selectedReturnBoundary.overtimeHours * 100 }})
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Boundary Computation Display -->
+            <div v-if="selectedReturnBoundary" class="p-3.5 rounded-xl border mb-5 flex items-center justify-between" style="background: rgba(249,168,37,0.1); border-color: rgba(249,168,37,0.3);">
+              <div>
+                <span class="text-xs text-amber-300 font-semibold block uppercase tracking-wider">Calculated Boundary</span>
+                <span class="text-xs text-slate-400">
+                  {{ selectedReturnBoundary.elapsedHours < 16 ? 'Under 16 hours (₱0)' : (selectedReturnBoundary.overtimeHours > 0 ? `Base: ₱${selectedReturnBoundary.baseBoundary} + OT: ₱${selectedReturnBoundary.overtimeHours * 100}` : `Base boundary: ₱${selectedReturnBoundary.baseBoundary}`) }}
+                </span>
+              </div>
+              <div class="text-xl font-bold font-mono text-amber-400">
+                {{ formatBoundaryCurrency(selectedReturnBoundary.boundary) }}
+              </div>
             </div>
 
             <div class="mb-5">
@@ -594,7 +717,7 @@ const formatDutyTime = (timeIn: string) => {
 
             <div class="p-3 rounded-lg text-xs mb-5" style="background: rgba(249,168,37,0.08); border: 1px solid rgba(249,168,37,0.15); color: #fde68a;">
               <UIcon name="i-heroicons-clock" class="w-4 h-4 inline mr-1" />
-              <strong>Time Out</strong> and <strong>Hours Worked</strong> will be calculated automatically using server time.
+              <strong>Time Out</strong>, <strong>Hours Worked</strong>, and <strong>Boundary</strong> will be calculated automatically using server time.
             </div>
 
             <div class="flex gap-3">

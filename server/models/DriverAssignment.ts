@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from 'mongoose'
+import mongoose, { Schema, type Document } from 'mongoose'
 
 export type AssignmentStatus = 'Active' | 'Completed'
 
@@ -14,6 +14,9 @@ export interface IDriverAssignment extends Document {
   timeOut: Date | null
   totalMinutes: number | null
   totalHours: number | null
+  boundary: number | null
+  baseBoundary: number | null
+  overtimeHours: number | null
   status: AssignmentStatus
   remarks: string
   createdAt: Date
@@ -68,6 +71,18 @@ const DriverAssignmentSchema = new Schema<IDriverAssignment>(
       type: Number,
       default: null
     },
+    boundary: {
+      type: Number,
+      default: null
+    },
+    baseBoundary: {
+      type: Number,
+      default: null
+    },
+    overtimeHours: {
+      type: Number,
+      default: null
+    },
     status: {
       type: String,
       enum: {
@@ -109,5 +124,5 @@ DriverAssignmentSchema.pre('save', async function (next) {
   next()
 })
 
-export const DriverAssignment = mongoose.models.DriverAssignment
-  || mongoose.model<IDriverAssignment>('DriverAssignment', DriverAssignmentSchema)
+export const DriverAssignment = (mongoose.models.DriverAssignment
+  || mongoose.model<IDriverAssignment>('DriverAssignment', DriverAssignmentSchema)) as mongoose.Model<IDriverAssignment>

@@ -16,8 +16,10 @@ export const useAuthStore = defineStore('auth', {
     canManageTaxis: (state) => state.user?.role === 'admin',
     canViewAuditLogs: (state) => state.user?.role === 'admin',
     canManageUsers: (state) => state.user?.role === 'admin',
-    canManageDrivers: (state) => ['admin', 'hr'].includes(state.user?.role || '')
+    canManageDrivers: (state) => ['admin', 'hr'].includes(state.user?.role || ''),
+    canViewBoundaryReports: (state) => ['admin', 'dispatcher'].includes(state.user?.role || '')
   },
+
 
   actions: {
     async login(username: string, password: string) {

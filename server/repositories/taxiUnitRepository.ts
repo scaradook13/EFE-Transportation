@@ -1,4 +1,4 @@
-import { TaxiUnit, type ITaxiUnit, type TaxiUnitStatus } from '~~/server/models/TaxiUnit'
+import { TaxiUnit, type ITaxiUnit, type TaxiUnitStatus, type TaxiType } from '~~/server/models/TaxiUnit'
 import type { FilterQuery } from 'mongoose'
 
 export interface CreateTaxiUnitDto {
@@ -8,6 +8,7 @@ export interface CreateTaxiUnitDto {
   model: string
   year: number
   color: string
+  taxiType: TaxiType
   status?: TaxiUnitStatus
 }
 
@@ -18,6 +19,7 @@ export interface UpdateTaxiUnitDto {
   model?: string
   year?: number
   color?: string
+  taxiType?: TaxiType
   status?: TaxiUnitStatus
 }
 
@@ -36,7 +38,8 @@ export const taxiUnitRepository = {
         { taxiNumber: { $regex: filters.search, $options: 'i' } },
         { plateNumber: { $regex: filters.search, $options: 'i' } },
         { brand: { $regex: filters.search, $options: 'i' } },
-        { model: { $regex: filters.search, $options: 'i' } }
+        { model: { $regex: filters.search, $options: 'i' } },
+        { taxiType: { $regex: filters.search, $options: 'i' } }
       ]
     }
 
@@ -79,6 +82,6 @@ export const taxiUnitRepository = {
   },
 
   async findAvailable() {
-    return TaxiUnit.find({ status: 'Available' }).select('_id taxiNumber plateNumber brand model')
+    return TaxiUnit.find({ status: 'Available' }).select('_id taxiNumber plateNumber brand model taxiType')
   }
 }
