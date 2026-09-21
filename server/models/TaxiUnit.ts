@@ -1,5 +1,6 @@
 import mongoose, { Schema, type Document } from 'mongoose'
-import type { TaxiType } from '~~/shared/utils/boundary'
+import type { TaxiType } from '../../shared/utils/boundary'
+
 
 export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
 export type { TaxiType }

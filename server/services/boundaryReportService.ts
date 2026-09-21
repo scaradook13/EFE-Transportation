@@ -2,7 +2,8 @@ import mongoose from 'mongoose'
 import dayjs from 'dayjs'
 import { TaxiUnit, type ITaxiUnit } from '../models/TaxiUnit'
 import { DriverAssignment, type IDriverAssignment } from '../models/DriverAssignment'
-import { calculateBoundary, formatBoundaryCurrency, formatTaxiType } from '~~/shared/utils/boundary'
+import { calculateBoundary, formatBoundaryCurrency, formatTaxiType } from '../../shared/utils/boundary'
+
 
 export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly'
 

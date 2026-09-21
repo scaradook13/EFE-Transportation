@@ -2,7 +2,8 @@ import { assignmentRepository } from '../repositories/assignmentRepository'
 import { Driver } from '../models/Driver'
 import { TaxiUnit } from '../models/TaxiUnit'
 import { DriverAssignment } from '../models/DriverAssignment'
-import { calculateBoundary } from '~~/shared/utils/boundary'
+import { calculateBoundary } from '../../shared/utils/boundary'
+
 
 export interface IssueDto {
   driverId: string
