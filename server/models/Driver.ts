@@ -3,6 +3,13 @@ import mongoose, { Document, Schema } from 'mongoose'
 export type EmploymentStatus = 'Active' | 'Inactive' | 'Expired License'
 export type OperationalStatus = 'Available' | 'Active' | 'Not Available'
 
+export interface IDriverBiometric {
+  enrolled: boolean
+  template?: string | null
+  finger: string
+  enrolledAt: Date | null
+}
+
 export interface IDriver extends Document {
   _id: mongoose.Types.ObjectId
   driverId: string
@@ -26,6 +33,14 @@ export interface IDriver extends Document {
   dateHired?: Date | null
   employmentStatus: EmploymentStatus
   operationalStatus: OperationalStatus
+  biometric?: IDriverBiometric
+  fingerprint?: {
+    registered: boolean
+    credentialID?: string
+    credentialPublicKey?: string
+    counter?: number
+    registeredAt?: Date
+  }
   createdBy: mongoose.Types.ObjectId
   updatedBy: mongoose.Types.ObjectId | null
   createdAt: Date
@@ -138,6 +153,25 @@ const DriverSchema = new Schema<IDriver>(
       required: true,
       index: true
     },
+    biometric: {
+      enrolled: {
+        type: Boolean,
+        default: false
+      },
+      template: {
+        type: String,
+        default: null,
+        select: false
+      },
+      finger: {
+        type: String,
+        default: 'Right Index'
+      },
+      enrolledAt: {
+        type: Date,
+        default: null
+      }
+    },
     fingerprint: {
       registered: { type: Boolean, default: false },
       credentialID: { type: String },
@@ -157,7 +191,15 @@ const DriverSchema = new Schema<IDriver>(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    toJSON: {
+      transform(_doc, ret) {
+        if (ret.biometric && ret.biometric.template) {
+          delete (ret as any).biometric.template
+        }
+        return ret
+      }
+    }
   }
 )
 

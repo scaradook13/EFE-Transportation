@@ -24,8 +24,14 @@ const formError = ref('')
 import { userSchema, userEditSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
 
+const showRemoveBioModal = ref(false)
+const userForBioAction = ref<User | null>(null)
+const removingBio = ref(false)
+const showEnrollModal = ref(false)
+const isReEnroll = ref(false)
+
 const form = reactive({
-  username: '', password: '', fullName: '',
+  username: '', password: '', fullName: '', email: '',
   role: 'dispatcher' as 'admin' | 'dispatcher' | 'hr', isActive: true
 })
 
@@ -43,7 +49,7 @@ const loadUsers = async () => {
 onMounted(loadUsers)
 
 const resetForm = () => {
-  Object.assign(form, { username: '', password: '', fullName: '', role: 'dispatcher', isActive: true })
+  Object.assign(form, { username: '', password: '', fullName: '', email: '', role: 'dispatcher', isActive: true })
 }
 
 const openCreate = () => {
@@ -62,8 +68,34 @@ const openEdit = (user: User) => {
   editingUser.value = user
   formError.value = ''
   clearErrors()
-  Object.assign(form, { username: user.username, password: '', fullName: user.fullName, role: user.role, isActive: user.isActive })
+  Object.assign(form, { username: user.username, password: '', fullName: user.fullName, email: user.email || '', role: user.role, isActive: user.isActive })
   showModal.value = true
+}
+
+const openEnrollForUser = (user: User, reEnroll = false) => {
+  userForBioAction.value = user
+  isReEnroll.value = reEnroll || !!user.biometric?.enrolled
+  showEnrollModal.value = true
+}
+
+const confirmRemoveBio = (user: User) => {
+  userForBioAction.value = user
+  showRemoveBioModal.value = true
+}
+
+const handleRemoveBio = async () => {
+  if (!userForBioAction.value) return
+  removingBio.value = true
+  try {
+    await $fetch(`/api/users/${userForBioAction.value._id}/biometric`, { method: 'DELETE' })
+    toast.add({ title: 'Fingerprint removed', color: 'info' })
+    showRemoveBioModal.value = false
+    await loadUsers()
+  } catch (err: any) {
+    toast.add({ title: 'Failed to remove biometric', description: err?.data?.message || err?.message, color: 'error' })
+  } finally {
+    removingBio.value = false
+  }
 }
 
 const handleSubmit = async () => {
@@ -73,16 +105,24 @@ const handleSubmit = async () => {
   formLoading.value = true
   try {
     if (editingUser.value) {
-      const payload: Partial<typeof form> = { fullName: form.fullName, role: form.role, isActive: form.isActive }
+      const payload: Partial<typeof form> = { fullName: form.fullName, email: form.email, role: form.role, isActive: form.isActive }
       if (form.password) payload.password = form.password
       await $fetch(`/api/users/${editingUser.value._id}`, { method: 'PUT', body: payload })
       toast.add({ title: 'User updated', color: 'success' })
+      showModal.value = false
+      await loadUsers()
     } else {
-      await $fetch('/api/users', { method: 'POST', body: form })
-      toast.add({ title: 'User created', color: 'success' })
+      const createdRes = await $fetch<{ success: boolean; data: User }>('/api/users', { method: 'POST', body: form })
+      toast.add({ title: 'User created successfully', description: 'Please register fingerprint for biometric setup.', color: 'success' })
+      showModal.value = false
+      await loadUsers()
+      // Seamlessly prompt to register fingerprint for the newly created user (Requirement 6)
+      if (createdRes?.data) {
+        userForBioAction.value = createdRes.data
+        isReEnroll.value = false
+        showEnrollModal.value = true
+      }
     }
-    showModal.value = false
-    await loadUsers()
   } catch (err: unknown) {
     formError.value = (err as any)?.data?.message || 'Failed to save user.'
     if ((err as any)?.data?.data?.errors) {
@@ -159,6 +199,7 @@ const roleColor = (role: string) => {
                 <th>User</th>
                 <th>Username</th>
                 <th>Role</th>
+                <th>Biometric</th>
                 <th>Status</th>
                 <th>Joined</th>
                 <th>Actions</th>
@@ -172,7 +213,10 @@ const roleColor = (role: string) => {
                       class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
                       style="background: linear-gradient(135deg, #16a34a, #f9a825); color: white;"
                     >{{ user.fullName.charAt(0) }}</div>
-                    <span class="text-white font-medium">{{ user.fullName }}</span>
+                    <div>
+                      <span class="text-white font-medium block">{{ user.fullName }}</span>
+                      <span v-if="user.email" class="text-[11px] text-slate-400 block">{{ user.email }}</span>
+                    </div>
                   </div>
                 </td>
                 <td class="font-mono text-sm text-slate-300">{{ user.username }}</td>
@@ -180,6 +224,18 @@ const roleColor = (role: string) => {
                   <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold capitalize border', roleColor(user.role)]">
                     {{ user.role }}
                   </span>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all"
+                    :class="user.biometric?.enrolled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'"
+                    :title="user.biometric?.enrolled ? 'Fingerprint Registered. Click to re-register.' : 'Fingerprint Not Registered. Click to enroll.'"
+                    @click="openEnrollForUser(user)"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full" :class="user.biometric?.enrolled ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-amber-400'" />
+                    <span>{{ user.biometric?.enrolled ? 'Registered' : 'Not Registered' }}</span>
+                  </button>
                 </td>
                 <td>
                   <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', user.isActive ? 'badge-active' : 'badge-cancelled']">
@@ -195,6 +251,21 @@ const roleColor = (role: string) => {
                       </div>
                     </template>
                     <template v-else>
+                      <button
+                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                        :title="user.biometric?.enrolled ? 'Re-register Fingerprint' : 'Register Fingerprint'"
+                        @click="openEnrollForUser(user)"
+                      >
+                        <UIcon name="i-heroicons-finger-print" class="w-4 h-4" :class="user.biometric?.enrolled ? 'text-emerald-400' : 'text-amber-400'" />
+                      </button>
+                      <button
+                        v-if="user.biometric?.enrolled"
+                        class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                        title="Remove Fingerprint"
+                        @click="confirmRemoveBio(user)"
+                      >
+                        <UIcon name="i-heroicons-x-mark" class="w-4 h-4 text-red-400" />
+                      </button>
                       <button class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Edit" @click="openEdit(user)">
                         <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
                       </button>
@@ -267,6 +338,10 @@ const roleColor = (role: string) => {
                 <p v-if="errors.password" class="mt-1 text-xs text-red-400">{{ errors.password }}</p>
               </div>
               <div>
+                <label class="form-label">Email</label>
+                <input v-model="form.email" type="email" class="form-input" placeholder="user@example.com" />
+              </div>
+              <div>
                 <label class="form-label">Role *</label>
                 <select v-model="form.role" @blur="touch('role')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.role }" required>
                   <option value="admin">Admin</option>
@@ -321,6 +396,47 @@ const roleColor = (role: string) => {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Biometric Enrollment Modal -->
+    <BiometricEnrollModal
+      v-if="showEnrollModal && userForBioAction"
+      :user-id="userForBioAction._id"
+      :user-name="userForBioAction.fullName"
+      :is-re-enroll="isReEnroll"
+      @close="showEnrollModal = false"
+      @enrolled="loadUsers"
+    />
+
+    <!-- Biometric Removal Confirmation Modal -->
+    <div v-if="showRemoveBioModal && userForBioAction" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+      <div class="glass-card w-full max-w-sm p-6 border border-white/10 relative shadow-2xl text-center">
+        <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+        </div>
+        <h3 class="text-base font-bold text-white mb-2">Remove fingerprint?</h3>
+        <p class="text-xs text-slate-400 leading-relaxed mb-6">
+          This will remove the registered biometric authentication credential for <strong class="text-white">{{ userForBioAction.fullName }}</strong>.
+        </p>
+        <div class="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            class="btn-secondary text-xs px-4 py-2"
+            :disabled="removingBio"
+            @click="showRemoveBioModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
+            :disabled="removingBio"
+            @click="handleRemoveBio"
+          >
+            {{ removingBio ? 'Removing...' : 'Remove' }}
+          </button>
+        </div>
+      </div>
+    </div>
 </template>
 
 <style scoped>

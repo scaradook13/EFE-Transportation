@@ -36,6 +36,20 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async loginWithBiometric(username?: string) {
+      this.loading = true
+      try {
+        const response = await $fetch<ApiResponse<{ user: AuthUser }>>('/api/auth/biometric-login', {
+          method: 'POST',
+          body: { username: username || undefined }
+        })
+        this.user = response.data.user
+        return response
+      } finally {
+        this.loading = false
+      }
+    },
+
     async logout() {
       try {
         await $fetch('/api/auth/logout', { method: 'POST' })

@@ -60,18 +60,26 @@ const logout = async () => {
 
       <!-- User info -->
       <div class="px-4 py-4 border-t" style="border-color: rgba(255,255,255,0.06);">
-        <div class="flex items-center gap-3 mb-3">
+        <NuxtLink to="/profile" class="flex items-center gap-3 mb-3 p-1.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
           <div
-            class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+            class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow"
             style="background: linear-gradient(135deg, #16a34a, #f9a825); color: white;"
           >
             {{ authStore.user?.fullName?.charAt(0)?.toUpperCase() || 'U' }}
           </div>
-          <div class="overflow-hidden">
-            <p class="text-sm font-semibold text-white truncate">{{ authStore.user?.fullName }}</p>
-            <p class="text-xs capitalize" style="color: #4ade80;">{{ authStore.user?.role }}</p>
+          <div class="overflow-hidden flex-1">
+            <p class="text-sm font-semibold text-white truncate group-hover:text-emerald-400 transition-colors">{{ authStore.user?.fullName }}</p>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-xs capitalize" style="color: #4ade80;">{{ authStore.user?.role }}</span>
+              <span
+                class="w-1.5 h-1.5 rounded-full"
+                :class="authStore.user?.biometric?.enrolled ? 'bg-emerald-400' : 'bg-amber-400'"
+                :title="authStore.user?.biometric?.enrolled ? 'Fingerprint Registered' : 'Fingerprint Not Registered'"
+              />
+            </div>
           </div>
-        </div>
+          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
+        </NuxtLink>
         <button
           class="w-full text-left nav-item text-red-400 hover:text-red-300"
           style="color: #f87171;"
@@ -136,7 +144,21 @@ const logout = async () => {
                 </NuxtLink>
               </div>
             </nav>
-            <div class="px-4 py-4 border-t" style="border-color: rgba(255,255,255,0.06);">
+            <div class="px-4 py-4 border-t space-y-1" style="border-color: rgba(255,255,255,0.06);">
+              <NuxtLink
+                to="/profile"
+                class="nav-item flex items-center justify-between"
+                @click="isMobileMenuOpen = false"
+              >
+                <div class="flex items-center gap-3">
+                  <UIcon name="i-heroicons-user-circle" class="w-5 h-5 nav-icon shrink-0" />
+                  <span>My Profile</span>
+                </div>
+                <span
+                  class="w-2 h-2 rounded-full"
+                  :class="authStore.user?.biometric?.enrolled ? 'bg-emerald-400' : 'bg-amber-400'"
+                />
+              </NuxtLink>
               <button class="w-full text-left nav-item" style="color: #f87171;" @click="logout">
                 <UIcon name="i-heroicons-arrow-right-on-rectangle" class="w-5 h-5 shrink-0" />
                 <span>Logout</span>

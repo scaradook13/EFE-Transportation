@@ -21,6 +21,41 @@ const { errors, validate, touch } = useFormValidation(loginSchema, form)
 const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
+const showBioModal = ref(false)
+const readerConnected = ref(false)
+const readerName = ref('')
+
+const checkReaderStatus = async () => {
+  try {
+    const res = await $fetch<{ success: boolean; data: any }>('/api/biometric/reader-status')
+    readerConnected.value = !!res.data?.connected
+    readerName.value = res.data?.description || 'DigitalPersona 4500'
+  } catch {
+    readerConnected.value = false
+  }
+}
+
+onMounted(() => {
+  checkReaderStatus()
+})
+
+const startBiometricLogin = async () => {
+  error.value = ''
+  await checkReaderStatus()
+  if (!readerConnected.value) {
+    error.value = 'Fingerprint reader not detected. Please connect your DigitalPersona 4500 reader.'
+    return
+  }
+  showBioModal.value = true
+}
+
+const onBiometricSuccess = (data: { user: any }) => {
+  if (data?.user) {
+    authStore.user = data.user
+    const redirect = route.query.redirect as string || '/'
+    router.push(redirect)
+  }
+}
 
 const handleLogin = async () => {
   if (!validate()) return
@@ -130,6 +165,40 @@ const handleLogin = async () => {
           <UIcon v-else name="i-heroicons-arrow-right-on-rectangle" class="w-4 h-4" />
           {{ loading ? 'Signing in...' : 'Sign In' }}
         </button>
+
+        <!-- Divider -->
+        <div class="relative flex items-center justify-center pt-1 pb-1">
+          <div class="border-t border-slate-700/60 w-full" />
+          <span class="bg-[#111827] px-3 text-xs text-slate-500 uppercase tracking-wider font-semibold shrink-0">or</span>
+        </div>
+
+        <!-- Biometric Sign In Button -->
+        <button
+          type="button"
+          class="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl font-semibold text-sm transition-all border shadow-lg cursor-pointer"
+          :class="[
+            readerConnected
+              ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-400 hover:bg-emerald-900/30 hover:border-emerald-500/60 hover:text-emerald-300 shadow-emerald-950/30'
+              : 'border-slate-700/60 bg-slate-800/40 text-slate-400 hover:bg-slate-800/70 hover:text-slate-300'
+          ]"
+          :disabled="loading"
+          @click="startBiometricLogin"
+        >
+          <UIcon name="i-heroicons-finger-print" class="w-5 h-5 text-emerald-400" />
+          <span>{{ form.username ? `Sign In as "${form.username}" with Fingerprint` : 'Sign In with Fingerprint' }}</span>
+        </button>
+
+        <!-- Reader Connection Status -->
+        <div class="flex items-center justify-center gap-2 text-xs text-slate-400 pt-1">
+          <span
+            class="w-2 h-2 rounded-full transition-colors"
+            :class="readerConnected ? 'bg-emerald-400 shadow-sm shadow-emerald-400 animate-pulse' : 'bg-slate-600'"
+          />
+          <span>Biometric Reader:</span>
+          <span :class="readerConnected ? 'text-emerald-400 font-medium' : 'text-slate-500'">
+            {{ readerConnected ? 'Connected & Ready' : 'Not Detected' }}
+          </span>
+        </div>
       </form>
 
       <!-- Footer -->
@@ -137,6 +206,20 @@ const handleLogin = async () => {
         EFE Taxi Dispatch System &copy; {{ new Date().getFullYear() }} EFE Group of Taxi
       </p>
     </div>
+
+    <!-- Biometric Login Modal -->
+    <BiometricAuthModal
+      v-if="showBioModal"
+      :user-name="form.username || undefined"
+      title="Biometric Sign In"
+      :description="form.username ? `Place your finger on the reader to verify account ${form.username}` : 'Place your finger on the DigitalPersona 4500 reader to sign in'"
+      :mode="form.username ? '1:1' : '1:N'"
+      endpoint="/api/auth/biometric-login"
+      :payload="{ username: form.username || undefined }"
+      @close="showBioModal = false"
+      @success="onBiometricSuccess"
+      @failed="(msg) => error = msg"
+    />
   </div>
 </template>
 

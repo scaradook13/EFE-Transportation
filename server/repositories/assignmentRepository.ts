@@ -103,7 +103,7 @@ export const assignmentRepository = {
 
   async findActive() {
     return DriverAssignment.find({ status: 'Active' })
-      .populate('driver', 'fullName driverId photo operationalStatus')
+      .populate('driver', 'fullName driverId photo operationalStatus biometric')
       .populate('taxiUnit', 'taxiNumber plateNumber brand model color status taxiType')
       .populate('issuedBy', 'fullName username')
       .sort({ assignedAt: -1 })
@@ -147,7 +147,7 @@ export const assignmentRepository = {
 
   async findById(id: string) {
     return DriverAssignment.findById(id)
-      .populate('driver', 'fullName driverId operationalStatus')
+      .populate('driver', 'fullName driverId operationalStatus biometric')
       .populate('taxiUnit', 'taxiNumber plateNumber status taxiType')
       .populate('issuedBy', 'fullName username')
   },

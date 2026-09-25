@@ -2,7 +2,6 @@
 import { useAssignmentStore } from '~/stores/assignments'
 import { assignmentIssueSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
-import { startAuthentication } from '@simplewebauthn/browser'
 import { calculateBoundary, formatTaxiType, formatBoundaryCurrency, type BoundaryCalculationResult } from '~~/shared/utils/boundary'
 import type { TaxiType } from '~/types'
 
@@ -20,13 +19,30 @@ const issueForm = reactive({ driverId: '', taxiUnitId: '', remarks: '' })
 const { errors: issueErrors, validate: validateIssue, touch: touchIssue, clearErrors: clearIssueErrors, setErrors: setIssueErrors } = useFormValidation(assignmentIssueSchema, issueForm)
 const issuingTaxi = ref(false)
 const issueError = ref('')
+const showDriverBioModal = ref(false)
+
+// Computed: the driver currently selected in the issue form
+const selectedDriver = computed(() => availableDrivers.value.find(d => d._id === issueForm.driverId))
 
 // --- Return Modal ---
 const showReturnModal = ref(false)
+const showReturnBioModal = ref(false)
 const selectedAssignment = ref<(typeof assignmentStore.activeAssignments)[0] | null>(null)
 const returnRemarks = ref('')
 const returningTaxi = ref(false)
 const returnError = ref('')
+
+const returnDriverId = computed(() => {
+  if (!selectedAssignment.value?.driver) return ''
+  return typeof selectedAssignment.value.driver === 'object'
+    ? (selectedAssignment.value.driver as any)._id
+    : selectedAssignment.value.driver
+})
+
+const returnDriverName = computed(() => {
+  if (!selectedAssignment.value) return 'Driver'
+  return getDriverName(selectedAssignment.value)
+})
 
 // --- Active Assignments Pagination ---
 const activePage = ref(1)
@@ -65,10 +81,12 @@ watch(searchQuery, (val) => {
 })
 
 // --- Available Drivers & Taxis for issue form ---
-const availableDrivers = ref<{ _id: string; fullName: string; driverId: string }[]>([])
+const availableDrivers = ref<{ _id: string; fullName: string; driverId: string; biometric?: { enrolled: boolean } }[]>([])
 const availableTaxis = ref<{ _id: string; taxiNumber: string; plateNumber: string; brand: string; model: string; taxiType?: TaxiType }[]>([])
 
-const canIssue = computed(() => authStore.user?.role === 'dispatcher')
+const showDispatcherEnrollModal = ref(false)
+
+const canIssue = computed(() => ['dispatcher', 'admin'].includes(authStore.user?.role || ''))
 
 const loadData = async () => {
   await assignmentStore.fetchActive()
@@ -117,40 +135,49 @@ const handleIssue = async () => {
   if (!validateIssue()) return
 
   issueError.value = ''
+
+  // Verify a driver is selected
+  if (!selectedDriver.value) {
+    issueError.value = 'Please select a driver first.'
+    return
+  }
+
+  // Check DRIVER biometric enrollment (driver must have fingerprint registered)
+  if (!selectedDriver.value.biometric?.enrolled) {
+    issueError.value = `Driver ${selectedDriver.value.fullName} has not enrolled their fingerprint. Please register biometrics in the driver profile first.`
+    toast.add({
+      title: 'Driver Biometric Required',
+      description: `${selectedDriver.value.fullName} must register their fingerprint before dispatch.`,
+      color: 'warning'
+    })
+    return
+  }
+
+  // Open Biometric Authentication Modal for DRIVER Verification via DigitalPersona 4500
+  showDriverBioModal.value = true
+}
+
+const onDispatcherEnrollSuccess = async () => {
+  showDispatcherEnrollModal.value = false
+  await authStore.fetchCurrentUser()
+  issueError.value = ''
+  toast.add({
+    title: 'Biometric Enrolled Successfully',
+    description: 'Your fingerprint is now registered. Please scan your finger to authorize the dispatch.',
+    color: 'success'
+  })
+  // Immediately proceed to biometric authorization
+  showDriverBioModal.value = true
+}
+
+const onDriverBioSuccess = async ({ biometricToken }: { user?: any; biometricToken: string }) => {
   issuingTaxi.value = true
+  issueError.value = ''
   try {
-    // 1. Initiate WebAuthn Options
-    const optionsRes = await $fetch<{ options: any }>('/api/auth/webauthn/auth-options', {
-      method: 'POST',
-      body: { driverId: issueForm.driverId }
-    }).catch(err => {
-      throw new Error(err.data?.message || 'Failed to get fingerprint challenge. Is fingerprint registered?');
-    });
-
-    // 2. Start WebAuthn on device
-    let authResp;
-    try {
-      authResp = await startAuthentication({ optionsJSON: optionsRes.options });
-    } catch (err: any) {
-      throw new Error('Fingerprint verification cancelled or failed.');
-    }
-
-    // 3. Verify on server and get Biometric Token
-    const verifyRes = await $fetch<{ success: boolean, biometricToken: string }>('/api/auth/webauthn/auth-verify', {
-      method: 'POST',
-      body: {
-        driverId: issueForm.driverId,
-        response: authResp
-      }
-    });
-
-    if (!verifyRes.success || !verifyRes.biometricToken) {
-      throw new Error('Invalid fingerprint verification');
-    }
-
-    await assignmentStore.issueTaxi(issueForm.driverId, issueForm.taxiUnitId, issueForm.remarks, verifyRes.biometricToken)
-    toast.add({ title: '🚕 Taxi issued successfully!', description: 'Driver is now active', color: 'success' })
+    await assignmentStore.issueTaxi(issueForm.driverId, issueForm.taxiUnitId, issueForm.remarks, biometricToken)
+    toast.add({ title: '🚕 Taxi issued successfully!', description: `Driver fingerprint verified. ${selectedDriver.value?.fullName || 'Driver'} is now active.`, color: 'success' })
     showIssueModal.value = false
+    showDriverBioModal.value = false
     await loadData()
   } catch (err: any) {
     issueError.value = err?.data?.message || err?.message || 'Failed to issue taxi'
@@ -173,16 +200,38 @@ const openReturnModal = (assignment: (typeof assignmentStore.activeAssignments)[
 const handleReturn = async () => {
   returnError.value = ''
   if (!selectedAssignment.value) return
+
+  // Check driver biometric enrollment if known
+  if (
+    typeof selectedAssignment.value.driver === 'object' &&
+    (selectedAssignment.value.driver as any).biometric?.enrolled === false
+  ) {
+    returnError.value = `Driver ${returnDriverName.value} has not enrolled their fingerprint. Please register biometrics in the driver profile first.`
+    toast.add({
+      title: 'Driver Biometric Required',
+      description: `${returnDriverName.value} must register their fingerprint before vehicle return can be processed.`,
+      color: 'warning'
+    })
+    return
+  }
+
+  // Open Biometric Authentication Modal for DRIVER verification on return
+  showReturnBioModal.value = true
+}
+
+const onReturnBioSuccess = async ({ biometricToken }: { user?: any; biometricToken: string }) => {
   returningTaxi.value = true
+  returnError.value = ''
   try {
-    const result = await assignmentStore.returnTaxi(selectedAssignment.value._id, returnRemarks.value) as any
+    const result = await assignmentStore.returnTaxi(selectedAssignment.value!._id, returnRemarks.value, biometricToken) as any
     const hours = Math.floor(result.totalMinutes / 60)
     const mins = result.totalMinutes % 60
     toast.add({ 
       title: '✅ Taxi returned successfully!', 
-      description: `Boundary: ${formatBoundaryCurrency(result.boundary)} • Hours worked: ${hours}h ${mins}m`, 
+      description: `Driver ${returnDriverName.value} fingerprint verified. Boundary: ${formatBoundaryCurrency(result.boundary)} • Hours worked: ${hours}h ${mins}m`, 
       color: 'success' 
     })
+    showReturnBioModal.value = false
     showReturnModal.value = false
     await loadData()
   } catch (err: any) {
@@ -577,7 +626,36 @@ const formatDutyTime = (timeIn: string) => {
             <div class="space-y-4">
               <div v-if="issueError" class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
                 <UIcon name="i-heroicons-exclamation-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p class="text-sm text-red-400 font-medium">{{ issueError }}</p>
+                <div class="flex-1">
+                  <p class="text-sm text-red-400 font-medium">{{ issueError }}</p>
+                  <button
+                    v-if="!authStore.user?.biometric?.enrolled"
+                    type="button"
+                    class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300 hover:text-amber-200 underline"
+                    @click="showDispatcherEnrollModal = true"
+                  >
+                    <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
+                    Register your fingerprint now on the reader →
+                  </button>
+                </div>
+              </div>
+
+              <!-- Unregistered Biometric Alert Box -->
+              <div v-if="!authStore.user?.biometric?.enrolled" class="p-3 bg-amber-500/10 border border-amber-500/25 rounded-lg flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                  <UIcon name="i-heroicons-finger-print" class="w-5 h-5 text-amber-400 shrink-0" />
+                  <div>
+                    <p class="text-xs font-semibold text-amber-300">Biometric Registration Required</p>
+                    <p class="text-[11px] text-slate-400">Your account needs a registered fingerprint to authorize taxi dispatches.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn-secondary text-xs px-2.5 py-1 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 shrink-0"
+                  @click="showDispatcherEnrollModal = true"
+                >
+                  Enroll Now
+                </button>
               </div>
               <div>
                 <label class="form-label">Select Driver *</label>
@@ -720,23 +798,66 @@ const formatDutyTime = (timeIn: string) => {
               <strong>Time Out</strong>, <strong>Hours Worked</strong>, and <strong>Boundary</strong> will be calculated automatically using server time.
             </div>
 
+            <div class="p-3 rounded-lg text-xs mb-4" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); color: #6ee7b7;">
+              <UIcon name="i-heroicons-finger-print" class="w-4 h-4 inline mr-1 text-emerald-400" />
+              <strong>Driver Biometric Verification:</strong> The assigned driver ({{ getDriverName(selectedAssignment) }}) must scan their fingerprint on the DigitalPersona reader to confirm and finalize this return.
+            </div>
+
             <div class="flex gap-3">
               <button class="btn-secondary flex-1" @click="showReturnModal = false">Cancel</button>
               <button
-                class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all"
-                style="background: linear-gradient(135deg, #dc2626, #991b1b); color: white;"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-emerald-950/30"
+                style="background: linear-gradient(135deg, #059669, #047857); color: white;"
                 :disabled="returningTaxi"
                 @click="handleReturn"
               >
                 <UIcon v-if="returningTaxi" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
-                <UIcon v-else name="i-heroicons-arrow-uturn-left" class="w-4 h-4" />
-                {{ returningTaxi ? 'Processing...' : 'Confirm Return' }}
+                <UIcon v-else name="i-heroicons-finger-print" class="w-4 h-4" />
+                {{ returningTaxi ? 'Processing...' : 'Verify Driver & Return' }}
               </button>
             </div>
           </div>
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Driver Biometric Authentication Modal (Issue) -->
+    <BiometricAuthModal
+      v-if="showDriverBioModal && selectedDriver"
+      :user-id="selectedDriver._id"
+      :user-name="selectedDriver.fullName"
+      title="Driver Fingerprint Verification"
+      :description="`${selectedDriver.fullName}, please place your finger on the DigitalPersona 4500 reader.`"
+      mode="1:1"
+      target-type="driver"
+      @close="showDriverBioModal = false"
+      @success="onDriverBioSuccess"
+      @failed="(msg) => toast.add({ title: 'Driver fingerprint verification failed', description: 'The driver must scan their enrolled fingerprint to authorize dispatch.', color: 'error' })"
+    />
+
+    <!-- Driver Biometric Authentication Modal (Return) -->
+    <BiometricAuthModal
+      v-if="showReturnBioModal && returnDriverId"
+      :user-id="returnDriverId"
+      :user-name="returnDriverName"
+      title="Driver Return Verification"
+      :description="`${returnDriverName}, please place your finger on the DigitalPersona 4500 reader to confirm vehicle return.`"
+      mode="1:1"
+      target-type="driver"
+      @close="showReturnBioModal = false"
+      @success="onReturnBioSuccess"
+      @failed="(msg) => toast.add({ title: 'Driver verification failed', description: 'The assigned driver must scan their enrolled fingerprint to complete the return.', color: 'error' })"
+    />
+
+    <!-- Dispatcher / Admin Biometric Enrollment Modal -->
+    <BiometricEnrollModal
+      v-if="showDispatcherEnrollModal && authStore.user"
+      :user-id="authStore.user.userId"
+      :user-name="authStore.user.fullName"
+      target-type="user"
+      @close="showDispatcherEnrollModal = false"
+      @enrolled="onDispatcherEnrollSuccess"
+    />
 </template>
 
 <style scoped>

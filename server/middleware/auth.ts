@@ -2,7 +2,12 @@ import { verifyToken } from '../utils/auth'
 
 const publicRoutes = [
   '/api/auth/login',
-  '/api/auth/refresh'
+  '/api/auth/biometric-login',
+  '/api/auth/refresh',
+  '/api/biometric/reader-status',
+  '/api/biometric/authenticate',
+  '/api/biometric/cancel',
+  '/api/biometric/enroll/cancel'
 ]
 
 export default defineEventHandler((event) => {
@@ -18,7 +23,11 @@ export default defineEventHandler((event) => {
     return
   }
 
-  const token = getCookie(event, 'auth_token')
+  const authHeader = getHeader(event, 'authorization')
+  let token = getCookie(event, 'auth_token')
+  if (!token && authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7)
+  }
 
   if (!token) {
     throw createError({ statusCode: 401, message: 'Authentication required' })

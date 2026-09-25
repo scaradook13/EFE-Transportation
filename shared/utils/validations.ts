@@ -16,6 +16,7 @@ const plateNumberMsg = 'Plate number must be in standard format (e.g., ABC 1234)
 export const userSchema = z.object({
   fullName: z.string().min(1, 'Full name is required.').min(3, 'Full name must be at least 3 characters.'),
   username: z.string().min(1, 'Username is required.').min(4, 'Username must be at least 4 characters.').regex(/^\S+$/, 'Username cannot contain spaces.'),
+  email: z.string().email('Please enter a valid email address.').optional().or(z.literal('')),
   password: z.string().min(8, 'Password must be at least 8 characters.').regex(/[A-Z]/, 'Password must contain at least one uppercase letter.').regex(/[a-z]/, 'Password must contain at least one lowercase letter.').regex(/[0-9]/, 'Password must contain at least one number.').regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character.'),
   role: z.enum(['admin', 'dispatcher', 'hr'], { errorMap: () => ({ message: 'Role must be admin, dispatcher, or hr.' }) }),
   isActive: z.boolean().optional()

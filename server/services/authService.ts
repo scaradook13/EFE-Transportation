@@ -49,8 +49,53 @@ export const authService = {
     user.lastActivity = new Date()
     await user.save()
 
-    return { accessToken, refreshToken, user: { ...payload, isActive: user.isActive } }
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        ...payload,
+        email: user.email || '',
+        isActive: user.isActive,
+        isPrimaryAdmin: user.isPrimaryAdmin || false,
+        biometric: {
+          enrolled: user.biometric?.enrolled || false,
+          finger: user.biometric?.finger || 'Right Index',
+          enrolledAt: user.biometric?.enrolledAt ? user.biometric.enrolledAt.toISOString() : null
+        }
+      }
+    }
+  },
+
+  async loginWithUser(user: any, rememberMe = false) {
+    const payload: JwtPayload = {
+      userId: user._id.toString(),
+      username: user.username,
+      role: user.role,
+      fullName: user.fullName
+    }
+
+    const { accessToken, refreshToken } = generateTokens(payload, rememberMe)
+
+    const refreshTokenHash = await argon2.hash(refreshToken)
+    user.refreshTokenHash = refreshTokenHash
+    user.lastLogin = new Date()
+    user.lastActivity = new Date()
+    await user.save()
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        ...payload,
+        email: user.email || '',
+        isActive: user.isActive,
+        isPrimaryAdmin: user.isPrimaryAdmin || false,
+        biometric: {
+          enrolled: user.biometric?.enrolled || false,
+          finger: user.biometric?.finger || 'Right Index',
+          enrolledAt: user.biometric?.enrolledAt ? user.biometric.enrolledAt.toISOString() : null
+        }
+      }
+    }
   }
-
-
 }

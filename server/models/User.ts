@@ -3,14 +3,23 @@ import argon2 from 'argon2'
 
 export type UserRole = 'admin' | 'dispatcher' | 'hr'
 
+export interface IUserBiometric {
+  enrolled: boolean
+  template?: string | null
+  finger: string
+  enrolledAt: Date | null
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId
   username: string
   password: string
   fullName: string
+  email?: string
   role: UserRole
   isActive: boolean
   isPrimaryAdmin?: boolean
+  biometric: IUserBiometric
   refreshTokenHash: string | null
   lastLogin: Date | null
   lastActivity: Date | null
@@ -43,6 +52,12 @@ const UserSchema = new Schema<IUser>(
       trim: true,
       maxlength: [100, 'Full name must not exceed 100 characters']
     },
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: ''
+    },
     role: {
       type: String,
       enum: {
@@ -59,6 +74,25 @@ const UserSchema = new Schema<IUser>(
     isPrimaryAdmin: {
       type: Boolean,
       default: false
+    },
+    biometric: {
+      enrolled: {
+        type: Boolean,
+        default: false
+      },
+      template: {
+        type: String,
+        default: null,
+        select: false
+      },
+      finger: {
+        type: String,
+        default: 'Right Index'
+      },
+      enrolledAt: {
+        type: Date,
+        default: null
+      }
     },
     refreshTokenHash: {
       type: String,
@@ -78,7 +112,11 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
     toJSON: {
       transform(_doc, ret) {
-        delete ret.password
+        delete (ret as any).password
+        delete (ret as any).refreshTokenHash
+        if (ret.biometric && ret.biometric.template) {
+          delete (ret as any).biometric.template
+        }
         return ret
       }
     }
@@ -105,4 +143,4 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
   }
 }
 
-export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
+export const User = (mongoose.models.User || mongoose.model<IUser>('User', UserSchema)) as mongoose.Model<IUser>

@@ -6,9 +6,9 @@ import jwt from 'jsonwebtoken'
 
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
-  if (user.role !== 'dispatcher') {
+  if (!['dispatcher', 'admin'].includes(user.role)) {
     setResponseStatus(event, 403)
-    return { success: false, message: 'Only dispatchers are authorized to manage taxi assignments.' }
+    return { success: false, message: 'Only dispatchers and administrators are authorized to manage taxi assignments.' }
   }
   await connectDB()
 
@@ -16,26 +16,32 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const parsed = await assignmentIssueSchema.parseAsync(body)
     
-    // Fingerprint verification enforcement
-    const driver = await Driver.findById(parsed.driverId)
-    if (!driver) throw createError({ statusCode: 404, message: 'Driver not found' })
-    if (!driver.fingerprint || !driver.fingerprint.registered) {
-      throw createError({ statusCode: 403, message: 'This driver does not have a registered fingerprint. Fingerprint registration is required before dispatch.' })
+    // 1. Driver Biometric Authentication Verification
+    // The DRIVER must scan their fingerprint to confirm the dispatch
+    const driverBiometricToken = body.biometricToken
+    if (!driverBiometricToken) {
+      throw createError({
+        statusCode: 403,
+        message: 'Driver biometric authentication is required before dispatch can continue.'
+      })
     }
-    
-    if (!body.biometricToken) {
-      throw createError({ statusCode: 403, message: 'Biometric verification is required for dispatch.' })
-    }
-    
+
     try {
       const config = useRuntimeConfig()
-      const payload = jwt.verify(body.biometricToken, config.jwtSecret) as any
-      if (payload.type !== 'fingerprint_auth' || payload.driverId !== driver._id.toString()) {
-        throw new Error('Invalid biometric token')
+      const payload = jwt.verify(driverBiometricToken, config.jwtSecret) as any
+      if (payload.type !== 'driver_biometric_auth' || payload.userId !== parsed.driverId) {
+        throw new Error('Invalid token')
       }
     } catch {
-      throw createError({ statusCode: 403, message: 'Invalid or expired biometric token. Please verify fingerprint again.' })
+      throw createError({
+        statusCode: 403,
+        message: 'Driver fingerprint authentication failed or expired. Dispatch cannot continue.'
+      })
     }
+
+    // 2. Driver Verification
+    const driver = await Driver.findById(parsed.driverId)
+    if (!driver) throw createError({ statusCode: 404, message: 'Driver not found' })
 
     const assignment = await assignmentService.issue({
       driverId: parsed.driverId,

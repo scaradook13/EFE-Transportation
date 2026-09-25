@@ -60,7 +60,7 @@ export const useAssignmentStore = defineStore('assignments', {
       try {
         const response = await $fetch<ApiResponse<Assignment>>('/api/assignments/issue', {
           method: 'POST',
-          body: { driverId, taxiUnitId, remarks, biometricToken }
+          body: { driverId, taxiUnitId, remarks, biometricToken, dispatcherBiometricToken: biometricToken }
         })
         return response.data
       } finally {
@@ -68,12 +68,12 @@ export const useAssignmentStore = defineStore('assignments', {
       }
     },
 
-    async returnTaxi(assignmentId: string, remarks = '') {
+    async returnTaxi(assignmentId: string, remarks = '', biometricToken?: string) {
       this.actionLoading = true
       try {
         const response = await $fetch<ApiResponse<unknown>>('/api/assignments/return', {
           method: 'POST',
-          body: { assignmentId, remarks }
+          body: { assignmentId, remarks, biometricToken }
         })
         return response.data
       } finally {

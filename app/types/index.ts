@@ -1,13 +1,21 @@
 // ==================== User Types ====================
 export type UserRole = 'admin' | 'dispatcher' | 'hr'
 
+export interface UserBiometric {
+  enrolled: boolean
+  finger: string
+  enrolledAt?: string | null
+}
+
 export interface User {
   _id: string
   username: string
   fullName: string
+  email?: string
   role: UserRole
   isActive: boolean
   isPrimaryAdmin?: boolean
+  biometric?: UserBiometric
   createdAt: string
   updatedAt: string
 }
@@ -16,9 +24,11 @@ export interface AuthUser {
   userId: string
   username: string
   fullName: string
+  email?: string
   role: UserRole
   isActive: boolean
   isPrimaryAdmin?: boolean
+  biometric?: UserBiometric
 }
 
 // ==================== Driver Types ====================
@@ -54,6 +64,7 @@ export interface Driver {
     registered: boolean;
     registeredAt?: string;
   }
+  biometric?: UserBiometric
   createdBy: User | string
   updatedBy: User | string | null
   createdAt: string

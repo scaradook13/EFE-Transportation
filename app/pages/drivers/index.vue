@@ -20,12 +20,63 @@ const deletingDriver = ref<Driver | null>(null)
 const formLoading = ref(false)
 import { driverSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
-import { startRegistration } from '@simplewebauthn/browser'
 
 const formError = ref('')
-const fingerprintRegistered = ref(false)
-const registeringFingerprint = ref(false)
-const fingerprintCredential = ref<any>(null)
+
+// Biometric enrollment modal state
+const showEnrollModal = ref(false)
+const enrollingDriver = ref<Driver | null>(null)
+const isReEnroll = ref(false)
+const showRemoveBiometricModal = ref(false)
+const removingBiometricDriver = ref<Driver | null>(null)
+const removingBiometric = ref(false)
+
+const openEnrollDriver = (driver: Driver, reEnroll = false) => {
+  enrollingDriver.value = driver
+  isReEnroll.value = reEnroll
+  showEnrollModal.value = true
+}
+
+const handleBiometricEnrolled = async () => {
+  loadDrivers()
+  toast.add({
+    title: 'Biometric Enrolled',
+    description: `Fingerprint successfully registered for ${enrollingDriver.value?.fullName}.`,
+    color: 'success'
+  })
+}
+
+const confirmRemoveBiometric = (driver: Driver) => {
+  removingBiometricDriver.value = driver
+  showRemoveBiometricModal.value = true
+}
+
+const handleRemoveBiometric = async () => {
+  if (!removingBiometricDriver.value) return
+  removingBiometric.value = true
+  try {
+    const res = await $fetch<{ success: boolean }>(`/api/drivers/${removingBiometricDriver.value._id}/biometric`, {
+      method: 'DELETE'
+    })
+    if (res.success) {
+      toast.add({
+        title: 'Biometric Removed',
+        description: `Biometric data removed for ${removingBiometricDriver.value.fullName}.`,
+        color: 'success'
+      })
+      showRemoveBiometricModal.value = false
+      loadDrivers()
+    }
+  } catch (err: any) {
+    toast.add({
+      title: 'Action Failed',
+      description: err?.data?.message || err?.message || 'Could not remove biometric data.',
+      color: 'error'
+    })
+  } finally {
+    removingBiometric.value = false
+  }
+}
 
 const form = reactive<CreateDriverPayload>({
   driverId: '', fullName: '', address: '', contactNumber: '',
@@ -48,9 +99,6 @@ const resetForm = () => {
   clearErrors()
   editingDriver.value = null
   showCameraModal.value = false
-  fingerprintRegistered.value = false
-  fingerprintCredential.value = null
-  registeringFingerprint.value = false
 }
 
 const loadDrivers = () => {
@@ -74,9 +122,6 @@ const openEdit = (driver: Driver) => {
   editingDriver.value = driver
   formError.value = ''
   clearErrors()
-  fingerprintRegistered.value = !!(driver as any).fingerprint?.registered
-  fingerprintCredential.value = null
-  registeringFingerprint.value = false
   Object.assign(form, {
     driverId: driver.driverId,
     fullName: driver.fullName,
@@ -117,66 +162,30 @@ const handlePhotoUpload = async (event: Event) => {
   await uploadPhoto(file)
 }
 
-const handleRegisterFingerprint = async () => {
-  try {
-    registeringFingerprint.value = true
-    formError.value = ''
-    
-    const optionsRes = await $fetch<{ options: any, userId: string }>('/api/auth/webauthn/register-options', {
-      method: 'POST',
-      body: { username: form.driverId || form.fullName || 'driver' }
-    })
-    
-    const authResp = await startRegistration({ optionsJSON: optionsRes.options })
-    
-    const verifyRes = await $fetch<{ success: boolean, credential: any }>('/api/auth/webauthn/register-verify', {
-      method: 'POST',
-      body: {
-        userId: optionsRes.userId,
-        response: authResp
-      }
-    })
-    
-    if (verifyRes.success) {
-      fingerprintRegistered.value = true
-      fingerprintCredential.value = verifyRes.credential
-      toast.add({ title: 'Fingerprint registered successfully', color: 'success' })
-    }
-  } catch (err: any) {
-    console.error(err)
-    formError.value = err.data?.message || err.message || 'Fingerprint registration failed.'
-    toast.add({ title: 'Registration Failed', description: formError.value, color: 'error' })
-  } finally {
-    registeringFingerprint.value = false
-  }
-}
-
 const handleSubmit = async () => {
   if (!validate()) return
 
-  if (!editingDriver.value && !fingerprintRegistered.value) {
-    formError.value = 'Fingerprint registration is required before saving the driver.'
-    return
-  }
-
   formError.value = ''
   formLoading.value = true
-  
-  if (fingerprintCredential.value) {
-    form.fingerprintCredential = fingerprintCredential.value
-  }
 
   try {
     if (editingDriver.value) {
       await driverStore.update(editingDriver.value._id, form)
       toast.add({ title: 'Driver updated', color: 'success' })
+      showModal.value = false
+      resetForm()
+      loadDrivers()
     } else {
-      await driverStore.create(form)
+      const created = await driverStore.create(form)
       toast.add({ title: 'Driver created', color: 'success' })
+      showModal.value = false
+      resetForm()
+      loadDrivers()
+      // Open biometric enrollment immediately for the newly created driver
+      if (created && (created as any)._id) {
+        openEnrollDriver(created, false)
+      }
     }
-    showModal.value = false
-    resetForm()
-    loadDrivers()
   } catch (err: unknown) {
     formError.value = (err as any)?.data?.message || 'Failed to save driver.'
     if ((err as any)?.data?.data?.errors) {
@@ -262,6 +271,7 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                   <th>Contact</th>
                   <th>License No.</th>
                   <th>License Exp.</th>
+                  <th>Biometric</th>
                   <th>Duty Status</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -300,6 +310,28 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                     </div>
                   </td>
                   <td>
+                    <div class="flex items-center gap-1.5">
+                      <span
+                        v-if="driver.biometric?.enrolled"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                        :title="`Enrolled: ${driver.biometric.finger || 'Right Index'}`"
+                      >
+                        <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 text-emerald-400" />
+                        Registered
+                      </span>
+                      <button
+                        v-else
+                        type="button"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/25 hover:bg-amber-500/20 transition-colors"
+                        @click="openEnrollDriver(driver, false)"
+                        title="Click to enroll driver fingerprint"
+                      >
+                        <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 text-amber-400" />
+                        Enroll
+                      </button>
+                    </div>
+                  </td>
+                  <td>
                     <span :class="[
                       'px-2 py-0.5 rounded-full text-xs font-medium',
                       (driver as any).operationalStatus === 'Active' ? 'badge-active' :
@@ -318,9 +350,18 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                   </td>
                   <td>
                     <div class="flex items-center gap-2">
-                      <NuxtLink :to="`/drivers/${driver._id}`" class="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                      <NuxtLink :to="`/drivers/${driver._id}`" class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="View Profile">
                         <UIcon name="i-heroicons-eye" class="w-4 h-4 text-slate-400" />
                       </NuxtLink>
+                      <button
+                        v-if="authStore.canManageDrivers"
+                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                        :class="driver.biometric?.enrolled ? 'text-emerald-400' : 'text-amber-400'"
+                        :title="driver.biometric?.enrolled ? 'Re-enroll Biometric' : 'Enroll Biometric'"
+                        @click="openEnrollDriver(driver, !!driver.biometric?.enrolled)"
+                      >
+                        <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
+                      </button>
                       <div v-if="authStore.canManageDrivers" :title="(driver as any).operationalStatus === 'Active' ? 'This driver is currently on duty and cannot be edited until the assigned taxi has been returned.' : undefined">
                         <button class="p-1.5 rounded-lg transition-colors" :class="(driver as any).operationalStatus === 'Active' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="(driver as any).operationalStatus === 'Active'" @click="openEdit(driver)">
                           <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
@@ -500,26 +541,48 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                 </div>
               </div>
 
+              <!-- Biometric Fingerprint Section in Form Modal -->
               <div class="border-t pt-4" style="border-color: rgba(255,255,255,0.06);">
-                <p class="text-sm font-medium text-slate-300 mb-3">Fingerprint Identification *</p>
-                <div class="flex items-center gap-4">
-                  <div class="flex-1 p-3 rounded-lg border flex items-center justify-between" :class="fingerprintRegistered ? 'border-green-500/30 bg-green-500/10' : 'border-slate-500/30 bg-slate-500/10'">
-                    <div class="flex items-center gap-3">
-                      <UIcon name="i-heroicons-finger-print" class="w-6 h-6" :class="fingerprintRegistered ? 'text-green-400' : 'text-slate-400'" />
-                      <div>
-                        <p class="text-sm font-medium" :class="fingerprintRegistered ? 'text-green-400' : 'text-slate-300'">
-                          {{ fingerprintRegistered ? 'Fingerprint Registered Successfully' : 'Fingerprint Not Registered' }}
-                        </p>
-                        <p class="text-xs text-slate-500" v-if="!fingerprintRegistered">Required for driver dispatch</p>
-                      </div>
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-sm font-medium text-slate-300">Biometric Identification</p>
+                  <span class="text-[11px] text-slate-500">HID DigitalPersona 4500</span>
+                </div>
+                
+                <!-- If editing existing driver -->
+                <div v-if="editingDriver" class="p-3.5 rounded-lg border flex items-center justify-between gap-3" :class="editingDriver.biometric?.enrolled ? 'border-emerald-500/30 bg-emerald-950/20' : 'border-amber-500/30 bg-amber-950/15'">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="editingDriver.biometric?.enrolled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'">
+                      <UIcon name="i-heroicons-finger-print" class="w-5 h-5" />
                     </div>
-                    <button type="button" class="btn-secondary text-xs px-3 py-1.5" @click="handleRegisterFingerprint" :disabled="registeringFingerprint || fingerprintRegistered" v-if="!fingerprintRegistered">
-                      <UIcon v-if="registeringFingerprint" name="i-heroicons-arrow-path" class="w-3.5 h-3.5 animate-spin" />
-                      {{ registeringFingerprint ? 'Registering...' : 'Register Fingerprint' }}
-                    </button>
-                    <button type="button" class="btn-secondary text-xs px-3 py-1.5" @click="fingerprintRegistered = false; fingerprintCredential = null" v-else>
-                      Clear / Retry
-                    </button>
+                    <div>
+                      <p class="text-sm font-medium" :class="editingDriver.biometric?.enrolled ? 'text-emerald-300' : 'text-amber-300'">
+                        {{ editingDriver.biometric?.enrolled ? `Registered (${editingDriver.biometric.finger || 'Right Index'})` : 'No Biometric Enrolled' }}
+                      </p>
+                      <p class="text-xs text-slate-400">
+                        {{ editingDriver.biometric?.enrolled ? 'Biometric authentication is active for this driver.' : 'Biometric fingerprint required for shift & dispatch operations.' }}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-secondary text-xs px-3 py-1.5 shrink-0"
+                    @click="openEnrollDriver(editingDriver, !!editingDriver.biometric?.enrolled)"
+                  >
+                    <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 text-emerald-400" />
+                    {{ editingDriver.biometric?.enrolled ? 'Re-enroll' : 'Enroll Now' }}
+                  </button>
+                </div>
+
+                <!-- If creating new driver -->
+                <div v-else class="p-3.5 rounded-lg border border-slate-700/50 bg-slate-800/40 flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                    <UIcon name="i-heroicons-finger-print" class="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p class="text-xs font-medium text-slate-200">Biometric Registration upon Save</p>
+                    <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                      After saving this driver, the HID DigitalPersona 4500 reader enrollment window will automatically open to capture the driver's fingerprint.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -556,6 +619,61 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Biometric Enrollment Modal -->
+    <BiometricEnrollModal
+      v-if="showEnrollModal && enrollingDriver"
+      :user-id="enrollingDriver._id"
+      :user-name="enrollingDriver.fullName"
+      :is-re-enroll="isReEnroll"
+      target-type="driver"
+      @close="showEnrollModal = false; enrollingDriver = null"
+      @enrolled="handleBiometricEnrolled"
+    />
+
+    <!-- Remove Biometric Confirmation Modal -->
+    <UModal v-model:open="showRemoveBiometricModal">
+      <template #content>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3 text-red-400">
+            <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">Remove Driver Biometric</h3>
+              <p class="text-xs text-slate-400">This action will unbind the registered fingerprint.</p>
+            </div>
+          </div>
+
+          <p class="text-sm text-slate-300">
+            Are you sure you want to remove the fingerprint biometric enrolled for
+            <span class="font-bold text-white">{{ removingBiometricDriver?.fullName }}</span>?
+            The driver will need to re-enroll their fingerprint before biometric authentication can be used.
+          </p>
+
+          <div class="flex items-center justify-end gap-3 pt-2">
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :disabled="removingBiometric"
+              @click="showRemoveBiometricModal = false"
+            >
+              Cancel
+            </UButton>
+            <UButton
+              color="error"
+              size="sm"
+              icon="i-heroicons-trash"
+              :loading="removingBiometric"
+              @click="handleRemoveBiometric"
+            >
+              Remove Biometric
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
 </template>
 
 <style scoped>

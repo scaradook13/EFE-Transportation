@@ -17,26 +17,15 @@ export default defineEventHandler(async (event) => {
       return { success: false, message: `Driver ID "${parsed.driverId}" is already in use. Please choose another ID.` }
     }
   
-    // Check fingerprint requirement
-    if (!body.fingerprintCredential) {
-      setResponseStatus(event, 400)
-      return { success: false, message: 'Fingerprint registration is required to create a driver.' }
-    }
-
     const driver = await driverService.create({
       ...parsed,
       createdBy: authUser.userId
     })
 
-    // Assign fingerprint credential to the new driver
-    driver.fingerprint = {
-      registered: true,
-      credentialID: body.fingerprintCredential.credentialID,
-      credentialPublicKey: body.fingerprintCredential.credentialPublicKey,
-      counter: body.fingerprintCredential.counter,
-      registeredAt: new Date()
-    };
-    await driver.save()
+    if (body.biometric) {
+      driver.biometric = body.biometric
+      await driver.save()
+    }
 
     logAudit(event, authUser.userId, 'CREATE_DRIVER', 'Drivers', `Created driver: ${driver.fullName} (${driver.driverId})`)
 
