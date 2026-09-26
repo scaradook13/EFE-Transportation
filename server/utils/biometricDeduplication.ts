@@ -59,23 +59,20 @@ export async function assertFingerprintIsUnique(
   // 1. Fast exact string check
   const exactMatch = candidates.find(c => c.template === newTemplate)
   if (exactMatch) {
-    const roleOrType = exactMatch.type === 'driver' ? 'Driver' : 'User'
     throw createError({
       statusCode: 409,
       statusMessage: 'Conflict',
-      message: `This fingerprint is already registered in the system to ${roleOrType} "${exactMatch.name}" (${exactMatch.identifier}). Each fingerprint can only be registered once.`
+      message: 'This fingerprint is already registered in the system.'
     })
   }
 
   // 2. Biometric ANSI minutiae feature comparison via DigitalPersona C# bridge engine
   const checkResult = await biometricBridge.checkDuplicate(newTemplate, candidates)
-  if (checkResult.isDuplicate && checkResult.matchedCandidate) {
-    const match = checkResult.matchedCandidate
-    const roleOrType = match.type === 'driver' ? 'Driver' : 'User'
+  if (checkResult.isDuplicate) {
     throw createError({
       statusCode: 409,
       statusMessage: 'Conflict',
-      message: `This fingerprint is already registered in the system to ${roleOrType} "${match.name}" (${match.identifier}). Each fingerprint can only be registered once.`
+      message: 'This fingerprint is already registered in the system.'
     })
   }
 }
