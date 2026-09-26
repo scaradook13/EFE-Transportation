@@ -44,8 +44,7 @@ export default defineEventHandler(async (event) => {
       await connectDB()
     }
     
-    const UserModule = await import('../models/User')
-    const User = UserModule.User || UserModule.default
+    const { User } = await import('../models/User')
     // Fetch isActive and refreshTokenHash (+ to include the select:false field)
     const dbUser = await User.findById(userPayload.userId).select('+refreshTokenHash isActive')
     

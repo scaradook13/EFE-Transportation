@@ -94,7 +94,8 @@ export const assignmentRepository = {
         .populate('issuedBy', 'fullName username role')
         .sort({ assignedAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       DriverAssignment.countDocuments(query)
     ])
 
@@ -107,6 +108,7 @@ export const assignmentRepository = {
       .populate('taxiUnit', 'taxiNumber plateNumber brand model color status taxiType')
       .populate('issuedBy', 'fullName username')
       .sort({ assignedAt: -1 })
+      .lean()
   },
 
   async findByDriver(driverId: string, page = 1, limit = 20) {
@@ -117,7 +119,8 @@ export const assignmentRepository = {
         .populate('issuedBy', 'fullName username')
         .sort({ assignedAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       DriverAssignment.countDocuments({ driver: driverId })
     ])
     return { data, total, page, limit, pages: Math.ceil(total / limit) }
@@ -131,18 +134,19 @@ export const assignmentRepository = {
         .populate('issuedBy', 'fullName username')
         .sort({ assignedAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       DriverAssignment.countDocuments({ taxiUnit: taxiId })
     ])
     return { data, total, page, limit, pages: Math.ceil(total / limit) }
   },
 
   async findActiveByDriver(driverId: string) {
-    return DriverAssignment.findOne({ driver: driverId, status: 'Active' })
+    return DriverAssignment.findOne({ driver: driverId, status: 'Active' }).lean()
   },
 
   async findActiveByTaxi(taxiId: string) {
-    return DriverAssignment.findOne({ taxiUnit: taxiId, status: 'Active' })
+    return DriverAssignment.findOne({ taxiUnit: taxiId, status: 'Active' }).lean()
   },
 
   async findById(id: string) {
@@ -150,6 +154,9 @@ export const assignmentRepository = {
       .populate('driver', 'fullName driverId operationalStatus biometric')
       .populate('taxiUnit', 'taxiNumber plateNumber status taxiType')
       .populate('issuedBy', 'fullName username')
+      // NOTE: We do not use lean() here because return logic uses .save() ? Wait. return logic uses findOneAndUpdate. But just in case any caller mutates it, let's look at `findById` usages.
+      // Actually assignmentService.return uses findById, but then uses findOneAndUpdate on the model! So it doesn't call .save() on this doc! So lean() is safe!
+      .lean()
   },
 
   async create(data: Partial<IDriverAssignment>) {

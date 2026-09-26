@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
       biometric: {
         enrolled: driver.biometric.enrolled,
         finger: driver.biometric.finger,
-        enrolledAt: driver.biometric.enrolledAt.toISOString()
+        enrolledAt: driver.biometric.enrolledAt ? driver.biometric.enrolledAt.toISOString() : new Date().toISOString()
       }
     }, wasEnrolled ? 'Driver fingerprint re-registered successfully' : 'Driver fingerprint registered successfully')
   } catch (err) {

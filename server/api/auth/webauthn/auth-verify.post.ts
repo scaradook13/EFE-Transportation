@@ -12,7 +12,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const driver = await Driver.findById(body.driverId);
-  if (!driver || !driver.fingerprint || !driver.fingerprint.registered) {
+  if (
+    !driver ||
+    !driver.fingerprint ||
+    !driver.fingerprint.registered ||
+    !driver.fingerprint.credentialID ||
+    !driver.fingerprint.credentialPublicKey ||
+    driver.fingerprint.counter === undefined
+  ) {
     throw createError({ statusCode: 400, message: 'Driver does not have a registered fingerprint' });
   }
 

@@ -45,7 +45,7 @@ export const taxiUnitRepository = {
 
     const skip = (page - 1) * limit
     const [data, total] = await Promise.all([
-      TaxiUnit.find(query).skip(skip).limit(limit).sort({ taxiNumber: 1 }),
+      TaxiUnit.find(query).skip(skip).limit(limit).sort({ taxiNumber: 1 }).lean(),
       TaxiUnit.countDocuments(query)
     ])
 
@@ -53,15 +53,15 @@ export const taxiUnitRepository = {
   },
 
   async findById(id: string) {
-    return TaxiUnit.findById(id)
+    return TaxiUnit.findById(id).lean()
   },
 
   async findByTaxiNumber(taxiNumber: string) {
-    return TaxiUnit.findOne({ taxiNumber })
+    return TaxiUnit.findOne({ taxiNumber }).lean()
   },
 
   async findByPlateNumber(plateNumber: string) {
-    return TaxiUnit.findOne({ plateNumber: { $regex: new RegExp(`^${plateNumber}$`, 'i') } })
+    return TaxiUnit.findOne({ plateNumber: { $regex: new RegExp(`^${plateNumber}$`, 'i') } }).lean()
   },
 
   async create(data: CreateTaxiUnitDto) {
@@ -82,6 +82,6 @@ export const taxiUnitRepository = {
   },
 
   async findAvailable() {
-    return TaxiUnit.find({ status: 'Available' }).select('_id taxiNumber plateNumber brand model taxiType')
+    return TaxiUnit.find({ status: 'Available' }).select('_id taxiNumber plateNumber brand model taxiType').lean()
   }
 }

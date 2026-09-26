@@ -96,7 +96,7 @@ const confirmRemoveBiometric = async () => {
   }
 }
 
-const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+const formatDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
 const isLicenseExpiringSoon = (d: string) => {
   const diff = (new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   return diff <= 60 && diff >= 0

@@ -63,13 +63,13 @@ const changePeriod = (newPeriod: ReportPeriod) => {
 
 const navigatePrev = () => {
   if (!report.value) return
-  selectedDate.value = report.value.dateRange.prevDate
+  selectedDate.value = report.value.dateRange.prevDate || ''
   fetchReport()
 }
 
 const navigateNext = () => {
   if (!report.value) return
-  selectedDate.value = report.value.dateRange.nextDate
+  selectedDate.value = report.value.dateRange.nextDate || ''
   fetchReport()
 }
 

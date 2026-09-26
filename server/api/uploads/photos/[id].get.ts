@@ -29,10 +29,13 @@ export default defineEventHandler(async (event) => {
     }
 
     const file = files[0]
+    if (!file) {
+      throw createError({ statusCode: 404, message: 'Photo not found' })
+    }
 
     // Set headers
     setResponseHeader(event, 'Content-Type', file.contentType || 'image/jpeg')
-    setResponseHeader(event, 'Content-Length', file.length.toString())
+    setResponseHeader(event, 'Content-Length', file.length)
     setResponseHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable') // Cache for 1 year
 
     // Open download stream and pipe to response

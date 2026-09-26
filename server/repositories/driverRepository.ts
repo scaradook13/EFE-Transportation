@@ -7,10 +7,10 @@ export interface CreateDriverDto {
   address: string
   contactNumber: string
   birthDate: Date | string
-  emergencyContact: {
-    name: string
-    relationship: string
-    contactNumber: string
+  emergencyContact?: {
+    name?: string
+    relationship?: string
+    contactNumber?: string
   }
   licenseNumber: string
   licenseExpiration: Date | string
@@ -32,9 +32,9 @@ export interface UpdateDriverDto {
   contactNumber?: string
   birthDate?: Date | string
   emergencyContact?: {
-    name: string
-    relationship: string
-    contactNumber: string
+    name?: string
+    relationship?: string
+    contactNumber?: string
   }
   licenseNumber?: string
   licenseExpiration?: Date | string
@@ -82,7 +82,8 @@ export const driverRepository = {
         .populate('updatedBy', 'fullName username')
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt: -1 }),
+        .sort({ createdAt: -1 })
+        .lean(),
       Driver.countDocuments(query)
     ])
 
@@ -93,10 +94,11 @@ export const driverRepository = {
     return Driver.findById(id)
       .populate('createdBy', 'fullName username')
       .populate('updatedBy', 'fullName username')
+      .lean()
   },
 
   async findByDriverId(driverId: string) {
-    return Driver.findOne({ driverId })
+    return Driver.findOne({ driverId }).lean()
   },
 
   async create(data: CreateDriverDto) {
@@ -145,6 +147,6 @@ export const driverRepository = {
   },
 
   async findActive() {
-    return Driver.find({ employmentStatus: 'Active' }).select('_id fullName driverId')
+    return Driver.find({ employmentStatus: 'Active' }).select('_id fullName driverId').lean()
   }
 }

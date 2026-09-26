@@ -1,5 +1,6 @@
-import { AuditLog } from '~~/server/models/AuditLog'
+import { AuditLog, type IAuditLog } from '~~/server/models/AuditLog'
 import { User } from '~~/server/models/User'
+import type { FilterQuery } from 'mongoose'
 
 export interface AuditLogFilters {
   user?: string
@@ -11,12 +12,12 @@ export interface AuditLogFilters {
 
 export const auditLogRepository = {
   async findAll(filters: AuditLogFilters = {}, page = 1, limit = 20) {
-    const query: Record<string, unknown> = {}
+    const query: FilterQuery<IAuditLog> = {}
 
-    if (filters.user) query.user = filters.user
+    if (filters.user) query.user = filters.user as any
     if (filters.module) query.module = filters.module
     if (filters.dateFrom || filters.dateTo) {
-      query.createdAt = {}
+      query.createdAt = {} as any
       if (filters.dateFrom) (query.createdAt as Record<string, unknown>).$gte = new Date(filters.dateFrom)
       if (filters.dateTo) (query.createdAt as Record<string, unknown>).$lte = new Date(filters.dateTo)
     }
@@ -67,7 +68,8 @@ export const auditLogRepository = {
         .populate('user', 'fullName username role')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       AuditLog.countDocuments(query)
     ])
 

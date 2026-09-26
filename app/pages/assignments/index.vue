@@ -170,7 +170,7 @@ const onDispatcherEnrollSuccess = async () => {
   showDriverBioModal.value = true
 }
 
-const onDriverBioSuccess = async ({ biometricToken }: { user?: any; biometricToken: string }) => {
+const onDriverBioSuccess = async ({ biometricToken }: { user?: any; biometricToken?: string }) => {
   issuingTaxi.value = true
   issueError.value = ''
   try {
@@ -219,7 +219,7 @@ const handleReturn = async () => {
   showReturnBioModal.value = true
 }
 
-const onReturnBioSuccess = async ({ biometricToken }: { user?: any; biometricToken: string }) => {
+const onReturnBioSuccess = async ({ biometricToken }: { user?: any; biometricToken?: string }) => {
   returningTaxi.value = true
   returnError.value = ''
   try {

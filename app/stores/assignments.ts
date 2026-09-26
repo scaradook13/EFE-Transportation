@@ -37,7 +37,7 @@ export const useAssignmentStore = defineStore('assignments', {
     async fetchAll(params: Record<string, string | number> = {}) {
       this.loading = true
       try {
-        const response = await $fetch<PaginatedResponse<Assignment[]>>('/api/assignments', { query: params })
+        const response = await $fetch<PaginatedResponse<Assignment>>('/api/assignments', { query: params })
         this.assignments = response.data
         this.pagination = response.pagination
       } finally {

@@ -155,7 +155,7 @@ export const biometricBridge = {
   /**
    * 1:1 Verification of a finger touch against a template.
    */
-  async verify(templateId: string): Promise<{ success: boolean; match: boolean; message: string }> {
+  async verify(templateId: string): Promise<{ success: boolean; match: boolean; message: string; error?: string }> {
     await this.ensureServiceRunning()
     const res = await fetch(`${BRIDGE_URL}/verify`, {
       method: 'POST',
@@ -169,7 +169,7 @@ export const biometricBridge = {
   /**
    * 1:N Identification of a finger touch against all enrolled templates.
    */
-  async identify(): Promise<{ success: boolean; match: boolean; templateId?: string; message: string }> {
+  async identify(): Promise<{ success: boolean; match: boolean; templateId?: string; message: string; error?: string }> {
     await this.ensureServiceRunning()
     const res = await fetch(`${BRIDGE_URL}/identify`, {
       method: 'POST',

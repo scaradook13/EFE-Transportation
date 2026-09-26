@@ -414,7 +414,7 @@ export const boundaryReportService = {
     )
 
     // 1. Fetch all registered taxis
-    const allTaxis = await TaxiUnit.find().sort({ taxiNumber: 1 })
+    const allTaxis = await TaxiUnit.find().sort({ taxiNumber: 1 }).lean()
 
     // 2. Aggregate completed assignments in period
     const aggregatedCompleted = await DriverAssignment.aggregate([
@@ -437,7 +437,7 @@ export const boundaryReportService = {
     // 3. Fetch active assignments (usually a small number, needs dynamic boundary calc)
     const activeAssignments = await DriverAssignment.find({
       status: 'Active'
-    }).select('taxiUnit timeIn')
+    }).select('taxiUnit timeIn').lean()
 
     // Group metrics by taxi ID
     const taxiMap = new Map<string, {

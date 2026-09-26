@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
       await driver.save();
     }
 
-    if (parsed.employmentStatus === 'Active' && oldEmploymentStatus !== 'Active' && oldOpStatus !== 'Active') {
+    if (parsed.employmentStatus === 'Active' && oldEmploymentStatus !== 'Active') {
       logAudit(
         event, 
         authUser.userId, 

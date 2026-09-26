@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
       biometric: {
         enrolled: user.biometric.enrolled,
         finger: user.biometric.finger,
-        enrolledAt: user.biometric.enrolledAt.toISOString()
+        enrolledAt: user.biometric.enrolledAt ? user.biometric.enrolledAt.toISOString() : new Date().toISOString()
       }
     }, wasEnrolled ? 'Fingerprint re-registered successfully' : 'Fingerprint registered successfully')
   } catch (err) {

@@ -32,7 +32,7 @@ export interface AuthUser {
 }
 
 // ==================== Driver Types ====================
-export type EmploymentStatus = 'Active' | 'Inactive'
+export type EmploymentStatus = 'Active' | 'Inactive' | 'Expired License'
 export type OperationalStatus = 'Available' | 'Active'
 
 export interface EmergencyContact {
@@ -83,6 +83,10 @@ export interface CreateDriverPayload {
   photo?: string | null
   photoFileId?: string | null
   dateHired?: string
+  tinId?: string
+  sssId?: string
+  philhealthId?: string
+  pagibigId?: string
   employmentStatus?: EmploymentStatus
   fingerprintCredential?: any
 }

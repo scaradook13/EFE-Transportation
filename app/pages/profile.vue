@@ -31,7 +31,7 @@ const loadBiometricStatus = async () => {
     )
     statusData.value = res.data
     // Sync with auth store
-    if (authStore.user) {
+    if (authStore.user && res.data) {
       authStore.user.biometric = {
         enrolled: res.data.enrolled,
         finger: res.data.finger,

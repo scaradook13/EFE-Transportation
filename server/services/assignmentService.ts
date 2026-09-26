@@ -174,22 +174,24 @@ export const assignmentService = {
       .populate('issuedBy', 'fullName')
       .sort({ assignedAt: -1 })
       .limit(5)
+      .lean()
 
     // Weekly trend (last 7 days)
-    const weeklyTrend = []
+    const weeklyTrendPromises = []
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now)
       date.setDate(date.getDate() - i)
       const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
       const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
-      const count = await DriverAssignment.countDocuments({
-        assignedAt: { $gte: dayStart, $lt: dayEnd }
-      })
-      weeklyTrend.push({
-        date: dayStart.toISOString().split('T')[0],
-        count
-      })
+      const dateStr = dayStart.toISOString().split('T')[0]
+
+      weeklyTrendPromises.push(
+        DriverAssignment.countDocuments({
+          assignedAt: { $gte: dayStart, $lt: dayEnd }
+        }).then(count => ({ date: dateStr, count }))
+      )
     }
+    const weeklyTrend = await Promise.all(weeklyTrendPromises)
 
     return {
       stats: {

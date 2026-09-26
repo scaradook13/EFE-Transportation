@@ -37,7 +37,7 @@ export const userRepository = {
 
     const skip = (page - 1) * limit
     const [data, total] = await Promise.all([
-      User.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+      User.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).lean(),
       User.countDocuments(query)
     ])
 
@@ -45,7 +45,7 @@ export const userRepository = {
   },
 
   async findById(id: string) {
-    return User.findById(id)
+    return User.findById(id).lean()
   },
 
   async findByUsername(username: string) {

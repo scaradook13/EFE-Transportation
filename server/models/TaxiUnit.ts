@@ -5,7 +5,7 @@ import type { TaxiType } from '../../shared/utils/boundary'
 export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
 export type { TaxiType }
 
-export interface ITaxiUnit extends Document {
+export interface ITaxiUnit extends Omit<Document, 'model'> {
   _id: mongoose.Types.ObjectId
   taxiNumber: string
   plateNumber: string

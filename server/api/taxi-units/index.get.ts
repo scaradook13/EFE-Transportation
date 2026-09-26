@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const page = Number(query.page) || 1
   const limit = Number(query.limit) || 10
   const filters = {
-    status: query.status as 'Available' | 'On Trip' | 'Maintenance' | undefined,
+    status: query.status as 'Available' | 'In Use' | 'Maintenance' | undefined,
     search: query.search as string | undefined
   }
 

@@ -20,6 +20,17 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  app: {
+    head: {
+      title: 'EFE Taxi Dispatch System',
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/logo.png' },
+        { rel: 'shortcut icon', href: '/logo.png' },
+        { rel: 'apple-touch-icon', href: '/logo.png' }
+      ]
+    }
+  },
+
   compatibilityDate: '2025-07-21',
 
   ssr: true,

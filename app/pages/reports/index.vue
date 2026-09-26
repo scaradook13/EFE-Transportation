@@ -85,7 +85,7 @@ const loadTaxiUnits = async () => {
       query: { limit: 200 }
     })
     taxiUnits.value = res.data || []
-    if (taxiUnits.value.length > 0 && !selectedTaxiId.value) {
+    if (taxiUnits.value.length > 0 && taxiUnits.value[0] && !selectedTaxiId.value) {
       selectedTaxiId.value = taxiUnits.value[0]._id
     }
   } catch (err: any) {
@@ -211,13 +211,13 @@ const downloadPdf = async () => {
     toast.add({
       title: 'PDF Report Generated',
       description: `Successfully downloaded ${filename}`,
-      color: 'green'
+      color: 'success'
     })
   } catch (err: any) {
     toast.add({
       title: 'PDF Generation Failed',
       description: err.message || 'Unable to generate PDF report',
-      color: 'red'
+      color: 'error'
     })
   } finally {
     pdfLoading.value = false
