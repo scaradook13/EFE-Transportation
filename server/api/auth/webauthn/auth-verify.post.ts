@@ -57,10 +57,9 @@ export default defineEventHandler(async (event) => {
   await storage.removeItem(`auth-${driver._id}`);
 
   // Generate a short-lived token specifically for biometric authorization (5 minutes)
-  const config = useRuntimeConfig();
   const biometricToken = jwt.sign(
     { driverId: driver._id.toString(), type: 'fingerprint_auth' },
-    config.jwtSecret,
+    getJwtSecret(),
     { expiresIn: '5m' }
   );
 

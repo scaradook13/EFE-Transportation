@@ -12,10 +12,10 @@ export const connectDB = async (): Promise<typeof mongoose> => {
   }
 
   const config = useRuntimeConfig()
-  const uri = config.mongodbUri
+  const uri = config.mongodbUri || process.env.MONGODB_URI || process.env.NUXT_MONGODB_URI || (process.env.NODE_ENV !== 'production' ? 'mongodb://localhost:27017/efe_taxi_dispatch' : '')
 
   if (!uri) {
-    throw new Error('MONGODB_URI is not defined in runtime config')
+    throw new Error('MONGODB_URI is not defined in runtime config or environment')
   }
 
   try {

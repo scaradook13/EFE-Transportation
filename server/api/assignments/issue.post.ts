@@ -27,8 +27,7 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
-      const config = useRuntimeConfig()
-      const payload = jwt.verify(driverBiometricToken, config.jwtSecret) as any
+      const payload = jwt.verify(driverBiometricToken, getJwtSecret()) as any
       if (payload.type !== 'driver_biometric_auth' || payload.userId !== parsed.driverId) {
         throw new Error('Invalid token')
       }

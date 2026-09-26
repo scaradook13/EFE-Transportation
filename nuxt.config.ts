@@ -2,10 +2,6 @@
 
 const isProduction = process.env.NODE_ENV === 'production'
 
-if (isProduction && (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET)) {
-  throw new Error('CRITICAL: JWT_SECRET and JWT_REFRESH_SECRET environment variables must be set in production.')
-}
-
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
@@ -36,9 +32,11 @@ export default defineNuxtConfig({
   ssr: true,
 
   runtimeConfig: {
-    mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/efe_taxi_dispatch',
-    jwtSecret: process.env.JWT_SECRET || (isProduction ? '' : 'efe-taxi-super-secret-key-change-in-production'),
-    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || (isProduction ? '' : 'efe-taxi-refresh-super-secret-key-change-in-production-2024'),
+    // In production, default to empty strings so secrets and credentials are NEVER inlined into the build artifact.
+    // At runtime, Nitro dynamically populates these from environment variables.
+    mongodbUri: isProduction ? '' : (process.env.MONGODB_URI || 'mongodb://localhost:27017/efe_taxi_dispatch'),
+    jwtSecret: isProduction ? '' : (process.env.JWT_SECRET || 'efe-taxi-super-secret-key-change-in-production'),
+    jwtRefreshSecret: isProduction ? '' : (process.env.JWT_REFRESH_SECRET || 'efe-taxi-refresh-super-secret-key-change-in-production-2024'),
     jwtExpires: process.env.JWT_EXPIRES || '1h',
     public: {
       appName: 'EFE Taxi Dispatch System',
