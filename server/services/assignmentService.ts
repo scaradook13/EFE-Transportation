@@ -19,54 +19,59 @@ export interface ReturnDto {
 
 export const assignmentService = {
   async issue(dto: IssueDto) {
-    // 1. Verify driver exists and is not already active
-    const driver = await Driver.findById(dto.driverId)
+    // 1. Atomically lock Driver
+    const driver = await Driver.findOneAndUpdate(
+      { _id: dto.driverId, employmentStatus: 'Active', operationalStatus: 'Available' },
+      { operationalStatus: 'Active' },
+      { new: true }
+    )
     if (!driver) {
-      throw createError({ statusCode: 404, message: 'Driver not found' })
-    }
-    if (driver.employmentStatus === 'Inactive') {
-      throw createError({ statusCode: 403, message: 'Driver is inactive and cannot be assigned a taxi' })
-    }
-    if (driver.employmentStatus === 'Expired License') {
-      throw createError({ statusCode: 403, message: 'Driver has an expired license and cannot be assigned a taxi' })
+      throw createError({ statusCode: 409, message: 'Driver is not available, inactive, or already on duty' })
     }
 
-    const existingDriverAssignment = await assignmentRepository.findActiveByDriver(dto.driverId)
-    if (existingDriverAssignment) {
-      throw createError({ statusCode: 409, message: 'Driver already has an active taxi assignment' })
-    }
-
-    // 2. Verify taxi exists and is available
-    const taxi = await TaxiUnit.findById(dto.taxiUnitId)
+    // 2. Atomically lock Taxi
+    const taxi = await TaxiUnit.findOneAndUpdate(
+      { _id: dto.taxiUnitId, status: 'Available' },
+      { status: 'In Use' },
+      { new: true }
+    )
     if (!taxi) {
-      throw createError({ statusCode: 404, message: 'Taxi unit not found' })
+      // Rollback Driver
+      await Driver.findByIdAndUpdate(dto.driverId, { operationalStatus: 'Available' })
+      throw createError({ statusCode: 409, message: 'Taxi unit is not available' })
     }
-    if (taxi.status !== 'Available') {
-      throw createError({ statusCode: 409, message: `Taxi unit is currently ${taxi.status} and cannot be assigned` })
+
+    try {
+      // 3. Create the assignment — timeIn = server time
+      const now = new Date()
+      const assignment = await assignmentRepository.create({
+        driver: driver._id,
+        taxiUnit: taxi._id,
+        issuedBy: dto.issuedBy as unknown as import('mongoose').Types.ObjectId,
+        assignedAt: now,
+        timeIn: now,
+        status: 'Active',
+        remarks: dto.remarks || ''
+      })
+      return assignment
+    } catch (e: any) {
+      // Rollback both on failure (e.g. unique partial index violation)
+      await Promise.all([
+        Driver.findByIdAndUpdate(dto.driverId, { operationalStatus: 'Available' }),
+        TaxiUnit.findByIdAndUpdate(dto.taxiUnitId, { status: 'Available' })
+      ])
+      if (e.code === 11000) {
+        throw createError({ statusCode: 409, message: 'Driver or Taxi is already assigned (Index Conflict)' })
+      }
+      throw e
     }
-
-    // 3. Create the assignment — timeIn = server time
-    const now = new Date()
-    const assignment = await assignmentRepository.create({
-      driver: driver._id,
-      taxiUnit: taxi._id,
-      issuedBy: dto.issuedBy as unknown as import('mongoose').Types.ObjectId,
-      assignedAt: now,
-      timeIn: now,
-      status: 'Active',
-      remarks: dto.remarks || ''
-    })
-
-    // 4. Update driver and taxi status atomically
-    await Promise.all([
-      Driver.findByIdAndUpdate(dto.driverId, { operationalStatus: 'Active' }),
-      TaxiUnit.findByIdAndUpdate(dto.taxiUnitId, { status: 'In Use' })
-    ])
-
-    return assignment
   },
 
   async return(dto: ReturnDto) {
+    // 1. Atomically lock and update Assignment
+    const now = new Date()
+    
+    // We do a two-step. First fetch to calculate hours/boundary, then atomically update if still Active.
     const assignment = await assignmentRepository.findById(dto.assignmentId)
     if (!assignment) {
       throw createError({ statusCode: 404, message: 'Assignment not found' })
@@ -76,7 +81,6 @@ export const assignmentService = {
     }
 
     // Calculate hours worked using server time
-    const now = new Date()
     const diffMs = now.getTime() - new Date(assignment.timeIn).getTime()
     const gracePeriodMs = 15 * 60000
     const dutyMs = Math.max(0, diffMs - gracePeriodMs)
@@ -93,20 +97,28 @@ export const assignmentService = {
     // Authoritative backend boundary computation
     const boundaryCalc = calculateBoundary(taxiType, assignment.timeIn, now)
 
-    // Update assignment with final hours and frozen boundary
-    await DriverAssignment.findByIdAndUpdate(dto.assignmentId, {
-      returnedAt: now,
-      timeOut: now,
-      totalMinutes,
-      totalHours,
-      boundary: boundaryCalc.boundary,
-      baseBoundary: boundaryCalc.baseBoundary,
-      overtimeHours: boundaryCalc.overtimeHours,
-      status: 'Completed',
-      remarks: dto.remarks || assignment.remarks
-    })
+    // 2. Atomically update Assignment only if it is STILL Active
+    const updatedAssignment = await DriverAssignment.findOneAndUpdate(
+      { _id: dto.assignmentId, status: 'Active' },
+      {
+        returnedAt: now,
+        timeOut: now,
+        totalMinutes,
+        totalHours,
+        boundary: boundaryCalc.boundary,
+        baseBoundary: boundaryCalc.baseBoundary,
+        overtimeHours: boundaryCalc.overtimeHours,
+        status: 'Completed',
+        remarks: dto.remarks || assignment.remarks
+      },
+      { new: true }
+    )
 
-    // Reset driver and taxi status
+    if (!updatedAssignment) {
+       throw createError({ statusCode: 409, message: 'Assignment was already completed by a concurrent request' })
+    }
+
+    // 3. Reset driver and taxi status
     await Promise.all([
       Driver.findByIdAndUpdate(driverId, { operationalStatus: 'Available' }),
       TaxiUnit.findByIdAndUpdate(taxiId, { status: 'Available' })

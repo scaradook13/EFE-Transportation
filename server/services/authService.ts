@@ -1,5 +1,7 @@
 import argon2 from 'argon2'
-import { userRepository } from '~~/server/repositories/userRepository'
+import { userRepository } from '../repositories/userRepository'
+import { connectDB } from '../utils/database'
+import { generateTokens } from '../utils/auth'
 
 export interface LoginDto {
   username: string

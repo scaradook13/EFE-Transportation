@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import { v4 as uuidv4 } from 'uuid'
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event)
+  requireRole(event, 'admin', 'hr')
 
   const formData = await readMultipartFormData(event)
 

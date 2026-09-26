@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose'
+import { Counter } from './Counter'
 
 export type AssignmentStatus = 'Active' | 'Completed'
 
@@ -104,6 +105,19 @@ const DriverAssignmentSchema = new Schema<IDriverAssignment>(
   }
 )
 
+DriverAssignmentSchema.index({ taxiUnit: 1, status: 1, assignedAt: -1 })
+DriverAssignmentSchema.index({ status: 1, assignedAt: -1 })
+
+// Enforce at most ONE active assignment per driver or taxi
+DriverAssignmentSchema.index(
+  { driver: 1 },
+  { unique: true, partialFilterExpression: { status: 'Active' }, name: 'unique_active_driver' }
+)
+DriverAssignmentSchema.index(
+  { taxiUnit: 1 },
+  { unique: true, partialFilterExpression: { status: 'Active' }, name: 'unique_active_taxi' }
+)
+
 // Auto-generate assignment number before saving
 DriverAssignmentSchema.pre('save', async function (next) {
   if (!this.isNew || this.assignmentNumber) return next()
@@ -113,14 +127,16 @@ DriverAssignmentSchema.pre('save', async function (next) {
     + String(today.getMonth() + 1).padStart(2, '0')
     + String(today.getDate()).padStart(2, '0')
 
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+  const counterId = `assignment_seq_${dateStr}`
 
-  const count = await mongoose.model('DriverAssignment').countDocuments({
-    createdAt: { $gte: startOfDay, $lt: endOfDay }
-  })
+  // Use atomic findOneAndUpdate with upsert
+  const counter = await Counter.findOneAndUpdate(
+    { _id: counterId },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  )
 
-  this.assignmentNumber = `ASN-${dateStr}-${String(count + 1).padStart(4, '0')}`
+  this.assignmentNumber = `ASN-${dateStr}-${String(counter?.seq || 1).padStart(4, '0')}`
   next()
 })
 

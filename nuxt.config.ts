@@ -1,4 +1,11 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+
+const isProduction = process.env.NODE_ENV === 'production'
+
+if (isProduction && (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET)) {
+  throw new Error('CRITICAL: JWT_SECRET and JWT_REFRESH_SECRET environment variables must be set in production.')
+}
+
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
@@ -19,8 +26,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/efe_taxi_dispatch',
-    jwtSecret: process.env.JWT_SECRET || 'efe-taxi-super-secret-key-change-in-production',
-    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'efe-taxi-refresh-super-secret-key-change-in-production-2024',
+    jwtSecret: process.env.JWT_SECRET || (isProduction ? '' : 'efe-taxi-super-secret-key-change-in-production'),
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || (isProduction ? '' : 'efe-taxi-refresh-super-secret-key-change-in-production-2024'),
     jwtExpires: process.env.JWT_EXPIRES || '1h',
     public: {
       appName: 'EFE Taxi Dispatch System',

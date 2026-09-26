@@ -4,7 +4,7 @@ import { driverSchema } from '~~/shared/utils/validations'
 import { handleZodError } from '~~/server/utils/response'
 
 export default defineEventHandler(async (event) => {
-  const authUser = requireAuth(event)
+  const authUser = requireRole(event, 'admin', 'hr')
   await connectDB()
   const id = getRouterParam(event, 'id')!
 

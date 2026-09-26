@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { TaxiUnit, type ITaxiUnit } from '../models/TaxiUnit'
 import { DriverAssignment, type IDriverAssignment } from '../models/DriverAssignment'
 import { calculateBoundary, formatBoundaryCurrency, formatTaxiType } from '../../shared/utils/boundary'
+import { connectDB } from '../utils/database'
 
 
 import type {
@@ -415,16 +416,28 @@ export const boundaryReportService = {
     // 1. Fetch all registered taxis
     const allTaxis = await TaxiUnit.find().sort({ taxiNumber: 1 })
 
-    // 2. Fetch completed assignments in period
-    const completedAssignments = await DriverAssignment.find({
-      status: 'Completed',
-      assignedAt: { $gte: start, $lte: end }
-    }).populate('driver', 'fullName driverId')
+    // 2. Aggregate completed assignments in period
+    const aggregatedCompleted = await DriverAssignment.aggregate([
+      {
+        $match: {
+          status: 'Completed',
+          assignedAt: { $gte: start, $lte: end }
+        }
+      },
+      {
+        $group: {
+          _id: '$taxiUnit',
+          dispatches: { $sum: 1 },
+          totalMinutes: { $sum: { $ifNull: ['$totalMinutes', 0] } },
+          boundary: { $sum: { $ifNull: ['$boundary', 0] } }
+        }
+      }
+    ])
 
-    // 3. Fetch active assignments
+    // 3. Fetch active assignments (usually a small number, needs dynamic boundary calc)
     const activeAssignments = await DriverAssignment.find({
       status: 'Active'
-    }).populate('driver', 'fullName driverId')
+    }).select('taxiUnit timeIn')
 
     // Group metrics by taxi ID
     const taxiMap = new Map<string, {
@@ -437,14 +450,14 @@ export const boundaryReportService = {
       taxiMap.set(t._id.toString(), { dispatches: 0, totalMinutes: 0, boundary: 0 })
     }
 
-    // Aggregate completed
-    for (const a of completedAssignments) {
-      const tId = (a.taxiUnit as any)?._id?.toString() || a.taxiUnit?.toString()
+    // Process aggregated completed data
+    for (const agg of aggregatedCompleted) {
+      const tId = agg._id?.toString()
       if (tId && taxiMap.has(tId)) {
         const item = taxiMap.get(tId)!
-        item.dispatches += 1
-        item.totalMinutes += (a.totalMinutes || 0)
-        item.boundary += (a.boundary || 0)
+        item.dispatches += agg.dispatches
+        item.totalMinutes += agg.totalMinutes
+        item.boundary += agg.boundary
       }
     }
 

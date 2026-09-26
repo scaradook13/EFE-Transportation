@@ -10,7 +10,7 @@ const enrollSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const authUser = requireAuth(event)
+  const authUser = requireRole(event, 'admin', 'hr')
   const targetDriverId = getRouterParam(event, 'id')!
   await connectDB()
 

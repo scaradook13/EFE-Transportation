@@ -1,4 +1,4 @@
-import { User, type IUser, type UserRole } from '~~/server/models/User'
+import { User, type IUser, type UserRole } from '../models/User'
 import type { FilterQuery } from 'mongoose'
 import argon2 from 'argon2'
 

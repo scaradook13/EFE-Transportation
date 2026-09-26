@@ -1,7 +1,7 @@
 import { Driver } from '../../../models/Driver'
 
 export default defineEventHandler(async (event) => {
-  const authUser = requireAuth(event)
+  const authUser = requireRole(event, 'admin', 'hr')
   const targetDriverId = getRouterParam(event, 'id')!
   await connectDB()
 
