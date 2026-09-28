@@ -67,6 +67,7 @@ export const biometricBridge = {
 
       console.log(`[BiometricBridge] Spawning ${exePath}...`)
       const child = spawn(exePath, [], {
+        cwd: path.dirname(exePath),
         detached: true,
         stdio: 'ignore',
         windowsHide: true
@@ -101,14 +102,22 @@ export const biometricBridge = {
     try {
       const res = await fetch(`${BRIDGE_URL}/reader`, { signal: AbortSignal.timeout(3000) })
       if (!res.ok) throw new Error(`HTTP error ${res.status}`)
-      return (await res.json()) as ReaderStatus
+      const raw = (await res.json()) as ReaderStatus
+      let desc = 'Fingerprint Reader'
+      if (raw.description && !raw.description.startsWith('$') && !raw.description.includes('{') && !raw.description.toLowerCase().includes('digitalpersona')) {
+        desc = raw.description
+      }
+      return {
+        ...raw,
+        description: desc
+      }
     } catch (err: any) {
       return {
         connected: false,
         unitId: 0,
-        description: 'DigitalPersona 4500',
+        description: 'Fingerprint Reader',
         status: 'Not Connected',
-        message: 'Fingerprint reader not detected. Please connect the DigitalPersona fingerprint reader and try again.'
+        message: 'Fingerprint reader not detected. Please connect your fingerprint reader and try again.'
       }
     }
   },
@@ -118,11 +127,18 @@ export const biometricBridge = {
    */
   async startEnrollment(): Promise<any> {
     await this.ensureServiceRunning()
-    const res = await fetch(`${BRIDGE_URL}/enroll/start`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(5000)
-    })
-    return res.json()
+    try {
+      const res = await fetch(`${BRIDGE_URL}/enroll/start`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000)
+      })
+      return await res.json()
+    } catch (err: any) {
+      return {
+        success: false,
+        error: 'Biometric scanner service is offline. Please ensure DigitalPersona service is running.'
+      }
+    }
   },
 
   /**
@@ -130,11 +146,18 @@ export const biometricBridge = {
    */
   async captureEnrollSample(): Promise<any> {
     await this.ensureServiceRunning()
-    const res = await fetch(`${BRIDGE_URL}/enroll/capture`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(30000)
-    })
-    return res.json()
+    try {
+      const res = await fetch(`${BRIDGE_URL}/enroll/capture`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(30000)
+      })
+      return await res.json()
+    } catch (err: any) {
+      return {
+        success: false,
+        error: 'Biometric capture timed out or service is offline.'
+      }
+    }
   },
 
   /**
@@ -146,7 +169,7 @@ export const biometricBridge = {
         method: 'POST',
         signal: AbortSignal.timeout(3000)
       })
-      return res.json()
+      return await res.json()
     } catch {
       return { success: true, status: 'cancelled' }
     }
@@ -157,13 +180,22 @@ export const biometricBridge = {
    */
   async verify(templateId: string): Promise<{ success: boolean; match: boolean; message: string; error?: string }> {
     await this.ensureServiceRunning()
-    const res = await fetch(`${BRIDGE_URL}/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ templateId }),
-      signal: AbortSignal.timeout(25000)
-    })
-    return res.json()
+    try {
+      const res = await fetch(`${BRIDGE_URL}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId }),
+        signal: AbortSignal.timeout(25000)
+      })
+      return await res.json()
+    } catch (err: any) {
+      return {
+        success: false,
+        match: false,
+        message: 'Biometric scanner service is offline or verification timed out.',
+        error: err.message
+      }
+    }
   },
 
   /**
@@ -171,11 +203,20 @@ export const biometricBridge = {
    */
   async identify(): Promise<{ success: boolean; match: boolean; templateId?: string; message: string; error?: string }> {
     await this.ensureServiceRunning()
-    const res = await fetch(`${BRIDGE_URL}/identify`, {
-      method: 'POST',
-      signal: AbortSignal.timeout(25000)
-    })
-    return res.json()
+    try {
+      const res = await fetch(`${BRIDGE_URL}/identify`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(25000)
+      })
+      return await res.json()
+    } catch (err: any) {
+      return {
+        success: false,
+        match: false,
+        message: 'Biometric scanner service is offline or identification timed out.',
+        error: err.message
+      }
+    }
   },
 
   /**

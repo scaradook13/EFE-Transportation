@@ -23,6 +23,6 @@ export default defineEventHandler(async (event) => {
     finger: user.biometric?.finger || 'Right Index',
     enrolledAt: user.biometric?.enrolledAt ? user.biometric.enrolledAt.toISOString() : null,
     readerConnected: reader.connected,
-    readerName: reader.description || 'DigitalPersona 4500'
+    readerName: reader.description || 'Fingerprint Reader'
   }, 'Biometric status retrieved')
 })

@@ -22,17 +22,14 @@ const error = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 const showBioModal = ref(false)
+const { checkLocalReader } = useBiometric()
 const readerConnected = ref(false)
 const readerName = ref('')
 
 const checkReaderStatus = async () => {
-  try {
-    const res = await $fetch<{ success: boolean; data: any }>('/api/biometric/reader-status')
-    readerConnected.value = !!res.data?.connected
-    readerName.value = res.data?.description || 'DigitalPersona 4500'
-  } catch {
-    readerConnected.value = false
-  }
+  const status = await checkLocalReader()
+  readerConnected.value = status.connected
+  readerName.value = status.description || 'Fingerprint Reader'
 }
 
 onMounted(() => {
@@ -43,7 +40,7 @@ const startBiometricLogin = async () => {
   error.value = ''
   await checkReaderStatus()
   if (!readerConnected.value) {
-    error.value = 'Fingerprint reader not detected. Please connect your DigitalPersona 4500 reader.'
+    error.value = 'Fingerprint reader not detected on this device. Please connect your fingerprint reader or sign in with your username and password.'
     return
   }
   showBioModal.value = true
@@ -167,9 +164,10 @@ const handleLogin = async () => {
         </button>
 
         <!-- Divider -->
-        <div class="relative flex items-center justify-center pt-1 pb-1">
-          <div class="border-t border-slate-700/60 w-full" />
-          <span class="bg-[#111827] px-3 text-xs text-slate-500 uppercase tracking-wider font-semibold shrink-0">or</span>
+        <div class="flex items-center pt-2 pb-4">
+          <div class="flex-1 border-t border-slate-700/60" />
+          <span class="px-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">or</span>
+          <div class="flex-1 border-t border-slate-700/60" />
         </div>
 
         <!-- Biometric Sign In Button -->
@@ -212,7 +210,7 @@ const handleLogin = async () => {
       v-if="showBioModal"
       :user-name="form.username || undefined"
       title="Biometric Sign In"
-      :description="form.username ? `Place your finger on the reader to verify account ${form.username}` : 'Place your finger on the DigitalPersona 4500 reader to sign in'"
+      :description="form.username ? `Place your finger on the reader to verify account ${form.username}` : 'Place your finger on the reader to sign in'"
       :mode="form.username ? '1:1' : '1:N'"
       endpoint="/api/auth/biometric-login"
       :payload="{ username: form.username || undefined }"

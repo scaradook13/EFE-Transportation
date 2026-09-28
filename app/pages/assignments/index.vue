@@ -430,8 +430,11 @@ const formatDutyTime = (timeIn: string) => {
                     >
                       {{ formatBoundaryCurrency(getActiveBoundaryCalc(a).boundary) }}
                     </span>
-                    <span v-if="getActiveBoundaryCalc(a).elapsedHours < 16" class="text-[10px] text-slate-500 block">
-                      &lt; 16 hrs
+                    <span v-if="getActiveBoundaryCalc(a).totalMinutes <= 15" class="text-[10px] text-slate-500 block">
+                      15m Buffer (₱0)
+                    </span>
+                    <span v-else-if="getActiveBoundaryCalc(a).overtimeHours > 0" class="text-[10px] text-purple-400 block">
+                      Base: ₱{{ getActiveBoundaryCalc(a).baseBoundary }} + OT
                     </span>
                     <span v-else class="text-[10px] text-slate-400 block">
                       Base: ₱{{ getActiveBoundaryCalc(a).baseBoundary }}
@@ -780,7 +783,7 @@ const formatDutyTime = (timeIn: string) => {
               <div>
                 <span class="text-xs text-amber-300 font-semibold block uppercase tracking-wider">Calculated Boundary</span>
                 <span class="text-xs text-slate-400">
-                  {{ selectedReturnBoundary.elapsedHours < 16 ? 'Under 16 hours (₱0)' : (selectedReturnBoundary.overtimeHours > 0 ? `Base: ₱${selectedReturnBoundary.baseBoundary} + OT: ₱${selectedReturnBoundary.overtimeHours * 100}` : `Base boundary: ₱${selectedReturnBoundary.baseBoundary}`) }}
+                  {{ selectedReturnBoundary.totalMinutes <= 15 ? 'Within 15-min Buffer (₱0)' : (selectedReturnBoundary.overtimeHours > 0 ? `Base: ₱${selectedReturnBoundary.baseBoundary} + OT: ₱${selectedReturnBoundary.overtimeHours * 100}` : `Base boundary: ₱${selectedReturnBoundary.baseBoundary}`) }}
                 </span>
               </div>
               <div class="text-xl font-bold font-mono text-amber-400">
@@ -800,7 +803,7 @@ const formatDutyTime = (timeIn: string) => {
 
             <div class="p-3 rounded-lg text-xs mb-4" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); color: #6ee7b7;">
               <UIcon name="i-heroicons-finger-print" class="w-4 h-4 inline mr-1 text-emerald-400" />
-              <strong>Driver Biometric Verification:</strong> The assigned driver ({{ getDriverName(selectedAssignment) }}) must scan their fingerprint on the DigitalPersona reader to confirm and finalize this return.
+              <strong>Driver Biometric Verification:</strong> The assigned driver ({{ getDriverName(selectedAssignment) }}) must scan their fingerprint on the fingerprint reader to confirm and finalize this return.
             </div>
 
             <div class="flex gap-3">
@@ -827,7 +830,7 @@ const formatDutyTime = (timeIn: string) => {
       :user-id="selectedDriver._id"
       :user-name="selectedDriver.fullName"
       title="Driver Fingerprint Verification"
-      :description="`${selectedDriver.fullName}, please place your finger on the DigitalPersona 4500 reader.`"
+      :description="`${selectedDriver.fullName}, please place your finger on the fingerprint reader.`"
       mode="1:1"
       target-type="driver"
       @close="showDriverBioModal = false"
@@ -841,7 +844,7 @@ const formatDutyTime = (timeIn: string) => {
       :user-id="returnDriverId"
       :user-name="returnDriverName"
       title="Driver Return Verification"
-      :description="`${returnDriverName}, please place your finger on the DigitalPersona 4500 reader to confirm vehicle return.`"
+      :description="`${returnDriverName}, please place your finger on the fingerprint reader to confirm vehicle return.`"
       mode="1:1"
       target-type="driver"
       @close="showReturnBioModal = false"

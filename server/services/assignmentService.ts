@@ -80,22 +80,16 @@ export const assignmentService = {
       throw createError({ statusCode: 409, message: 'Assignment is already completed' })
     }
 
-    // Calculate hours worked using server time
-    const diffMs = now.getTime() - new Date(assignment.timeIn).getTime()
-    const gracePeriodMs = 15 * 60000
-    const dutyMs = Math.max(0, diffMs - gracePeriodMs)
-
-    const totalMinutes = Math.round(dutyMs / 60000)
-    const totalHours = Math.round((totalMinutes / 60) * 100) / 100
-
     // Fetch taxi to get taxiType for boundary calculation
     const driverId = (assignment.driver as any)?._id || assignment.driver
     const taxiId = (assignment.taxiUnit as any)?._id || assignment.taxiUnit
     const taxi = await TaxiUnit.findById(taxiId)
     const taxiType = taxi?.taxiType || 'BATMAN'
 
-    // Authoritative backend boundary computation
+    // Authoritative backend boundary computation (with 15m buffer rule)
     const boundaryCalc = calculateBoundary(taxiType, assignment.timeIn, now)
+    const totalMinutes = boundaryCalc.totalMinutes
+    const totalHours = Math.round((totalMinutes / 60) * 100) / 100
 
     // 2. Atomically update Assignment only if it is STILL Active
     const updatedAssignment = await DriverAssignment.findOneAndUpdate(

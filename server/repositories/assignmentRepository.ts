@@ -28,7 +28,8 @@ export const assignmentRepository = {
     }
 
     if (filters.search) {
-      const searchRegex = new RegExp(filters.search.trim(), 'i')
+      const sanitized = escapeRegex(filters.search.trim())
+      const searchRegex = new RegExp(sanitized, 'i')
       
       const [matchingDrivers, matchingTaxis, matchingDispatchers] = await Promise.all([
         Driver.find({ $or: [{ fullName: searchRegex }, { driverId: searchRegex }] }).select('_id'),
@@ -44,7 +45,7 @@ export const assignmentRepository = {
           $expr: {
             $regexMatch: {
               input: { $dateToString: { format: "%Y-%m-%d %H:%M:%S %b %B", date: "$assignedAt", timezone: "+08:00" } },
-              regex: filters.search.trim(),
+              regex: sanitized,
               options: "i"
             }
           }
@@ -53,7 +54,7 @@ export const assignmentRepository = {
           $expr: {
             $regexMatch: {
               input: { $dateToString: { format: "%Y-%m-%d %H:%M:%S %b %B", date: "$timeIn", timezone: "+08:00" } },
-              regex: filters.search.trim(),
+              regex: sanitized,
               options: "i"
             }
           }
@@ -68,7 +69,7 @@ export const assignmentRepository = {
                   else: ""
                 }
               },
-              regex: filters.search.trim(),
+              regex: sanitized,
               options: "i"
             }
           }
@@ -92,7 +93,7 @@ export const assignmentRepository = {
         .populate('driver', 'fullName driverId operationalStatus')
         .populate('taxiUnit', 'taxiNumber plateNumber status taxiType')
         .populate('issuedBy', 'fullName username role')
-        .sort({ assignedAt: -1 })
+        .sort({ updatedAt: -1, assignedAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -117,7 +118,7 @@ export const assignmentRepository = {
       DriverAssignment.find({ driver: driverId })
         .populate('taxiUnit', 'taxiNumber plateNumber brand model taxiType')
         .populate('issuedBy', 'fullName username')
-        .sort({ assignedAt: -1 })
+        .sort({ updatedAt: -1, assignedAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -132,7 +133,7 @@ export const assignmentRepository = {
       DriverAssignment.find({ taxiUnit: taxiId })
         .populate('driver', 'fullName driverId')
         .populate('issuedBy', 'fullName username')
-        .sort({ assignedAt: -1 })
+        .sort({ updatedAt: -1, assignedAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),

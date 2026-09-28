@@ -23,20 +23,57 @@ const errorMessage = ref('')
 const isCancelling = ref(false)
 let authAbortController: AbortController | null = null
 
+const { checkLocalReader, captureScan, cancelScan } = useBiometric()
+
+const isNoFingerprint = computed(() => {
+  const msg = (errorMessage.value || statusMessage.value || '').toLowerCase()
+  return msg.includes('no fingerprint') || msg.includes('not enrolled') || msg.includes('not registered')
+})
+
 const startAuth = async () => {
   state.value = 'scanning'
-  statusMessage.value = 'Waiting for scan...'
+  statusMessage.value = 'Connecting to fingerprint reader...'
   errorMessage.value = ''
 
   try {
-    const targetUrl = props.endpoint || '/api/biometric/authenticate'
-    const requestBody = props.payload || {
-      mode: props.mode || (props.userId ? '1:1' : '1:N'),
-      userId: props.userId,
-      targetType: props.targetType || 'user'
+    // 1. Verify reader is attached to THIS machine
+    const localStatus = await checkLocalReader()
+    if (isCancelling.value) return
+    if (!localStatus.connected) {
+      state.value = 'failed'
+      errorMessage.value = 'Fingerprint reader not detected on this device. Please connect your USB reader.'
+      statusMessage.value = errorMessage.value
+      emit('failed', errorMessage.value)
+      return
     }
 
+    // 2. Trigger scan on THIS machine's USB reader
+    statusMessage.value = 'Place your finger on the reader'
     authAbortController = new AbortController()
+    const scanRes = await captureScan(authAbortController.signal)
+    if (isCancelling.value) return
+
+    if (!scanRes.success || !scanRes.templateId) {
+      if (scanRes.status === 'cancelled') return
+      state.value = 'failed'
+      errorMessage.value = scanRes.error || 'Failed login'
+      statusMessage.value = errorMessage.value
+      emit('failed', errorMessage.value)
+      return
+    }
+
+    // 3. Send scanned template to server for verification
+    statusMessage.value = 'Verifying fingerprint...'
+    const targetUrl = props.endpoint || '/api/biometric/authenticate'
+    const requestBody = {
+      ...(props.payload || {
+        mode: props.mode || (props.userId ? '1:1' : '1:N'),
+        userId: props.userId,
+        targetType: props.targetType || 'user'
+      }),
+      template: scanRes.templateId
+    }
+
     const res = await $fetch<{ success: boolean; data: any; message?: string }>(targetUrl, {
       method: 'POST',
       body: requestBody,
@@ -55,13 +92,14 @@ const startAuth = async () => {
       }, 1500)
     } else {
       state.value = 'failed'
-      statusMessage.value = 'Fingerprint not recognized. Please try again.'
+      statusMessage.value = 'Failed login'
+      errorMessage.value = 'Failed login'
       emit('failed', statusMessage.value)
     }
   } catch (err: any) {
     if (!isCancelling.value) {
       state.value = 'failed'
-      errorMessage.value = err?.data?.message || err?.message || 'Fingerprint not recognized. Please try again.'
+      errorMessage.value = err?.data?.message || err?.message || 'Failed login'
       statusMessage.value = errorMessage.value
       emit('failed', errorMessage.value)
     }
@@ -73,7 +111,7 @@ const handleCancel = () => {
   if (authAbortController) {
     try { authAbortController.abort() } catch {}
   }
-  $fetch('/api/biometric/cancel', { method: 'POST' }).catch(() => {})
+  cancelScan()
   emit('close')
 }
 
@@ -86,7 +124,7 @@ onUnmounted(() => {
   if (authAbortController) {
     try { authAbortController.abort() } catch {}
   }
-  $fetch('/api/biometric/cancel', { method: 'POST' }).catch(() => {})
+  cancelScan()
 })
 </script>
 
@@ -108,7 +146,7 @@ onUnmounted(() => {
           {{ title || 'Biometric Authentication' }}
         </h3>
         <p class="text-xs text-slate-400 mb-6">
-          {{ userName ? `Authenticating ${userName}` : (description || 'Place your finger on the reader') }}
+          {{ userName ? `Authenticating ${userName}` : (description || 'Place your finger on the reader to sign in') }}
         </p>
 
         <!-- Center Fingerprint Graphic -->
@@ -162,8 +200,11 @@ onUnmounted(() => {
             </div>
 
             <div v-else-if="state === 'failed' || state === 'error'" class="space-y-0.5">
-              <p class="text-sm font-medium text-red-400">✕ Fingerprint not recognized</p>
-              <p class="text-xs text-slate-400">Please try again.</p>
+              <p class="text-sm font-medium text-red-400">
+                ✕ {{ isNoFingerprint ? 'No fingerprint are registered' : (errorMessage || 'Failed login') }}
+              </p>
+              <p v-if="!isNoFingerprint" class="text-xs text-slate-400">Please try again.</p>
+              <p v-else class="text-xs text-slate-400">Please sign in with your username and password.</p>
             </div>
 
             <div v-else>
@@ -177,14 +218,16 @@ onUnmounted(() => {
           <button
             v-if="state === 'failed' || state === 'error'"
             type="button"
-            class="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-            @click="startAuth"
+            class="text-xs px-5 py-2 flex items-center gap-1.5"
+            :class="isNoFingerprint ? 'btn-secondary' : 'btn-primary'"
+            @click="isNoFingerprint ? handleCancel() : startAuth()"
           >
-            <UIcon name="i-heroicons-arrow-path" class="w-4 h-4" />
-            Try Again
+            <UIcon :name="isNoFingerprint ? 'i-heroicons-x-mark' : 'i-heroicons-arrow-path'" class="w-4 h-4" />
+            <span>{{ isNoFingerprint ? 'Close' : 'Try Again' }}</span>
           </button>
 
           <button
+            v-if="!isNoFingerprint"
             type="button"
             class="btn-secondary text-xs px-5 py-2"
             @click="handleCancel"

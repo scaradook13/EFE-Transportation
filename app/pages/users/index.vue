@@ -408,35 +408,43 @@ const roleColor = (role: string) => {
     />
 
     <!-- Biometric Removal Confirmation Modal -->
-    <div v-if="showRemoveBioModal && userForBioAction" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div class="glass-card w-full max-w-sm p-6 border border-white/10 relative shadow-2xl text-center">
-        <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-          <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showRemoveBioModal && userForBioAction"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+          @click.self="showRemoveBioModal = false"
+        >
+          <div class="glass-card w-full max-w-sm p-6 border border-white/10 relative shadow-2xl text-center">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-lg shadow-red-500/10">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+            </div>
+            <h3 class="text-base font-bold text-white mb-2">Remove fingerprint?</h3>
+            <p class="text-xs text-slate-400 leading-relaxed mb-6">
+              This will remove the registered biometric authentication credential for <strong class="text-white">{{ userForBioAction.fullName }}</strong>.
+            </p>
+            <div class="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                class="btn-secondary text-xs px-4 py-2"
+                :disabled="removingBio"
+                @click="showRemoveBioModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
+                :disabled="removingBio"
+                @click="handleRemoveBio"
+              >
+                {{ removingBio ? 'Removing...' : 'Remove' }}
+              </button>
+            </div>
+          </div>
         </div>
-        <h3 class="text-base font-bold text-white mb-2">Remove fingerprint?</h3>
-        <p class="text-xs text-slate-400 leading-relaxed mb-6">
-          This will remove the registered biometric authentication credential for <strong class="text-white">{{ userForBioAction.fullName }}</strong>.
-        </p>
-        <div class="flex items-center justify-center gap-3">
-          <button
-            type="button"
-            class="btn-secondary text-xs px-4 py-2"
-            :disabled="removingBio"
-            @click="showRemoveBioModal = false"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
-            :disabled="removingBio"
-            @click="handleRemoveBio"
-          >
-            {{ removingBio ? 'Removing...' : 'Remove' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
 </template>
 
 <style scoped>

@@ -36,10 +36,10 @@ const logout = async () => {
     <aside class="sidebar hidden lg:flex flex-col" style="width: 260px; min-width: 260px;">
       <!-- Logo -->
       <div class="flex items-center gap-3 px-6 py-5 border-b" style="border-color: rgba(255,255,255,0.06);">
-        <img src="/logo.png" alt="R&T Logo" class="w-10 h-10 rounded-full object-cover" />
+        <img src="/logo.png" alt="EFE Logo" class="w-10 h-10 rounded-full object-cover" />
         <div>
           <div class="font-bold text-sm text-white leading-tight">EFE Taxi Dispatch</div>
-          <div class="text-xs text-green-400 font-medium">R&T Group of Taxi</div>
+          <div class="text-xs text-green-400 font-medium">EFE Group of Taxi</div>
         </div>
       </div>
 
@@ -124,10 +124,10 @@ const logout = async () => {
           <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <aside class="sidebar absolute left-0 top-0 h-full flex flex-col animate-slideInLeft" style="width: 260px;">
             <div class="flex items-center gap-3 px-6 py-5 border-b" style="border-color: rgba(255,255,255,0.06);">
-              <img src="/logo.png" alt="R&T Logo" class="w-10 h-10 rounded-full object-cover" />
+              <img src="/logo.png" alt="EFE Logo" class="w-10 h-10 rounded-full object-cover" />
               <div>
                 <div class="font-bold text-sm text-white leading-tight">EFE Taxi Dispatch</div>
-                <div class="text-xs text-green-400 font-medium">R&T Group of Taxi</div>
+                <div class="text-xs text-green-400 font-medium">EFE Group of Taxi</div>
               </div>
             </div>
             <nav class="flex-1 px-3 py-4 overflow-y-auto">

@@ -1,5 +1,6 @@
 import { driverService } from '~~/server/services/driverService'
 import { assignmentRepository } from '~~/server/repositories/assignmentRepository'
+import { DriverAssignment } from '~~/server/models/DriverAssignment'
 
 export default defineEventHandler(async (event) => {
   const authUser = requireRole(event, 'admin', 'hr')
@@ -11,6 +12,16 @@ export default defineEventHandler(async (event) => {
     logAudit(event, authUser.userId, 'DELETE_DRIVER', 'Drivers', `Attempted Delete Driver: Blocked - Driver has an active assignment`)
     setResponseStatus(event, 409)
     return { success: false, message: 'This driver is currently on duty and cannot be deleted until the assigned taxi has been returned.' }
+  }
+
+  const assignmentCount = await DriverAssignment.countDocuments({ driver: id })
+  if (assignmentCount > 0) {
+    logAudit(event, authUser.userId, 'DELETE_DRIVER', 'Drivers', `Attempted Delete Driver: Blocked - Driver has ${assignmentCount} historical assignments`)
+    setResponseStatus(event, 409)
+    return {
+      success: false,
+      message: 'Cannot delete a driver with existing dispatch and boundary history. To preserve audit and financial records, please set their status to Inactive instead.'
+    }
   }
 
   const driver = await driverService.remove(id)

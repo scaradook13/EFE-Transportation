@@ -1,5 +1,12 @@
 import PDFDocument from 'pdfkit'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc.js'
+import timezone from 'dayjs/plugin/timezone.js'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+const TIMEZONE = 'Asia/Manila'
 import type { BoundaryReportData, FleetBoundaryReportData } from '../../app/types'
 
 function formatPdfCurrency(amount: number): string {
@@ -37,7 +44,7 @@ export const pdfReportService = {
 
         // Right-aligned report header
         doc.font('Helvetica-Bold').fontSize(11).fillColor('#2563EB').text('TAXI BOUNDARY REPORT', 240, 48, { width: 315, align: 'right' })
-        doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(`Generated: ${dayjs().format('MMM D, YYYY h:mm A')}`, 240, 64, { width: 315, align: 'right' })
+        doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(`Generated: ${dayjs().tz(TIMEZONE).format('MMM D, YYYY h:mm A')}`, 240, 64, { width: 315, align: 'right' })
         doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(`Period: ${data.dateRange.displayLabel}`, 240, 76, { width: 315, align: 'right' })
 
         // Horizontal Rule
@@ -89,20 +96,22 @@ export const pdfReportService = {
         currentY += 16
 
         // Table Column Config
-        // Total = 70 + 115 + 75 + 75 + 70 + 110 = 515
+        // Usable width = 515 (LEFT_MARGIN = 40)
         const cols = {
-          date: { x: LEFT_MARGIN + 6, w: 68 },
-          driver: { x: LEFT_MARGIN + 76, w: 120 },
-          timeIn: { x: LEFT_MARGIN + 198, w: 72 },
-          timeOut: { x: LEFT_MARGIN + 272, w: 72 },
-          duration: { x: LEFT_MARGIN + 346, w: 68 },
-          boundary: { x: LEFT_MARGIN + 416, w: 93 }
+          dateIn: { x: LEFT_MARGIN + 6, w: 56 },
+          dateOut: { x: LEFT_MARGIN + 64, w: 56 },
+          driver: { x: LEFT_MARGIN + 122, w: 96 },
+          timeIn: { x: LEFT_MARGIN + 220, w: 54 },
+          timeOut: { x: LEFT_MARGIN + 276, w: 54 },
+          duration: { x: LEFT_MARGIN + 332, w: 58 },
+          boundary: { x: LEFT_MARGIN + 392, w: 117 }
         }
 
         const drawTableHeader = () => {
           doc.rect(LEFT_MARGIN, currentY, USABLE_WIDTH, 18).fill('#1E293B')
-          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF')
-          doc.text('DATE', cols.date.x, currentY + 5)
+          doc.font('Helvetica-Bold').fontSize(7).fillColor('#FFFFFF')
+          doc.text('DISPATCH DATE', cols.dateIn.x, currentY + 5)
+          doc.text('RETURN DATE', cols.dateOut.x, currentY + 5)
           doc.text('DRIVER', cols.driver.x, currentY + 5)
           doc.text('TIME IN', cols.timeIn.x, currentY + 5)
           doc.text('TIME OUT', cols.timeOut.x, currentY + 5)
@@ -129,13 +138,15 @@ export const pdfReportService = {
             const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'
             doc.rect(LEFT_MARGIN, currentY, USABLE_WIDTH, 19).fillAndStroke(rowBg, '#F1F5F9')
 
-            const dateStr = dayjs(rec.timeIn).format('MM/DD/YYYY')
-            const timeInStr = dayjs(rec.timeIn).format('hh:mm A')
-            const timeOutStr = rec.timeOut ? dayjs(rec.timeOut).format('hh:mm A') : 'In Transit'
             const isRunning = rec.status === 'Active'
+            const dateInStr = dayjs(rec.timeIn).tz(TIMEZONE).format('MM/DD/YYYY')
+            const dateOutStr = rec.timeOut ? dayjs(rec.timeOut).tz(TIMEZONE).format('MM/DD/YYYY') : (isRunning ? 'Active' : '—')
+            const timeInStr = dayjs(rec.timeIn).tz(TIMEZONE).format('hh:mm A')
+            const timeOutStr = rec.timeOut ? dayjs(rec.timeOut).tz(TIMEZONE).format('hh:mm A') : 'In Transit'
 
             doc.font('Helvetica').fontSize(7.5).fillColor('#0F172A')
-            doc.text(dateStr, cols.date.x, currentY + 5)
+            doc.text(dateInStr, cols.dateIn.x, currentY + 5)
+            doc.text(dateOutStr, cols.dateOut.x, currentY + 5)
 
             // Driver with running indicator
             if (isRunning) {
@@ -164,7 +175,7 @@ export const pdfReportService = {
 
           doc.rect(LEFT_MARGIN, currentY, USABLE_WIDTH, 20).fillAndStroke('#E2E8F0', '#CBD5E1')
           doc.font('Helvetica-Bold').fontSize(8).fillColor('#0F172A')
-          doc.text('TOTAL', cols.date.x, currentY + 5)
+          doc.text('TOTAL', cols.dateIn.x, currentY + 5)
           doc.text(`${data.summary.totalDispatches} Shifts`, cols.driver.x, currentY + 5)
           doc.text(data.summary.formattedTotalHours, cols.duration.x, currentY + 5)
           doc.text(formatPdfCurrency(data.summary.totalBoundary), cols.boundary.x, currentY + 5, { width: cols.boundary.w, align: 'right' })
@@ -215,7 +226,7 @@ export const pdfReportService = {
 
         // Right-aligned report header
         doc.font('Helvetica-Bold').fontSize(11).fillColor('#2563EB').text('FLEET INCOME REPORT', 240, 48, { width: 315, align: 'right' })
-        doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(`Generated: ${dayjs().format('MMM D, YYYY h:mm A')}`, 240, 64, { width: 315, align: 'right' })
+        doc.font('Helvetica').fontSize(8).fillColor('#64748B').text(`Generated: ${dayjs().tz(TIMEZONE).format('MMM D, YYYY h:mm A')}`, 240, 64, { width: 315, align: 'right' })
         doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(`Period: ${data.dateRange.displayLabel}`, 240, 76, { width: 315, align: 'right' })
 
         // Horizontal Rule

@@ -23,13 +23,37 @@ namespace DigitalPersonaBiometricService
         private const int REQUIRED_SCANS = 3;
         private const int FAR_THRESHOLD = 0x7FFFFFFF / 100000; // 1 in 100,000 FAR (21474)
 
+        private static void Log(string message)
+        {
+            try
+            {
+                Console.WriteLine(message);
+                string logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "service.log");
+                File.AppendAllText(logFile, string.Format("[{0:yyyy-MM-dd HH:mm:ss}] {1}\r\n", DateTime.Now, message));
+            }
+            catch { }
+        }
+
         public static void Main(string[] args)
         {
-            Console.OutputEncoding = Encoding.UTF8;
-            Console.WriteLine("============================================================");
-            Console.WriteLine("  EFE Transportation — HID DigitalPersona Biometric Service ");
-            Console.WriteLine("  Official Non-WBF Driver & DPUruNet Native Engine Active   ");
-            Console.WriteLine("============================================================");
+            try
+            {
+                Console.OutputEncoding = Encoding.UTF8;
+            }
+            catch
+            {
+                // Headless/background mode without an attached console window
+                try
+                {
+                    Console.SetOut(TextWriter.Null);
+                    Console.SetError(TextWriter.Null);
+                }
+                catch { }
+            }
+
+            Log("============================================================");
+            Log("  EFE Transportation — HID DigitalPersona Biometric Service ");
+            Log("============================================================");
 
             int port = PORT;
             int customPort;
@@ -41,16 +65,17 @@ namespace DigitalPersonaBiometricService
             // Test reader detection on startup
             try
             {
+                Log("[BiometricService] Initializing reader detection...");
                 ReaderCollection readers = ReaderCollection.GetReaders();
-                Console.WriteLine("[BiometricService] Initializing reader detection: {0} reader(s) found", readers.Count);
+                Log(string.Format("[BiometricService] {0} reader(s) found", readers.Count));
                 foreach (Reader r in readers)
                 {
-                    Console.WriteLine("[BiometricService] Connected Reader: {0} ({1})", r.Description.Name, r.Description.SerialNumber);
+                    Log(string.Format("[BiometricService] Connected Reader: {0} ({1})", r.Description.Name, r.Description.SerialNumber));
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("[BiometricService] Reader init warning: {0}", ex.Message);
+                Log("[BiometricService] Reader init warning: " + ex.Message);
             }
 
             StartServer(port);
@@ -62,9 +87,26 @@ namespace DigitalPersonaBiometricService
             {
                 _listener = new HttpListener();
                 _listener.Prefixes.Add(string.Format("http://127.0.0.1:{0}/", port));
-                _listener.Prefixes.Add(string.Format("http://localhost:{0}/", port));
-                _listener.Start();
-                Console.WriteLine("[BiometricService] HTTP Bridge listening on http://127.0.0.1:{0}/", port);
+                try
+                {
+                    _listener.Prefixes.Add(string.Format("http://localhost:{0}/", port));
+                }
+                catch { }
+
+                try
+                {
+                    _listener.Start();
+                }
+                catch (HttpListenerException hex)
+                {
+                    Log("[BiometricService] HttpListener prefix error: " + hex.Message + ", falling back to loopback only");
+                    _listener.Close();
+                    _listener = new HttpListener();
+                    _listener.Prefixes.Add(string.Format("http://127.0.0.1:{0}/", port));
+                    _listener.Start();
+                }
+
+                Log(string.Format("[BiometricService] HTTP Bridge listening on http://127.0.0.1:{0}/", port));
 
                 while (_running)
                 {
@@ -81,7 +123,7 @@ namespace DigitalPersonaBiometricService
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("[BiometricService] Fatal listener error: " + ex.Message);
+                Log("[BiometricService] Fatal listener error: " + ex.ToString());
             }
         }
 
@@ -95,6 +137,7 @@ namespace DigitalPersonaBiometricService
             response.Headers.Add("Access-Control-Allow-Origin", "*");
             response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
             response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            response.Headers.Add("Access-Control-Allow-Private-Network", "true");
 
             if (request.HttpMethod == "OPTIONS")
             {

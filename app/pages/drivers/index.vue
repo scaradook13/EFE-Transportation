@@ -545,7 +545,7 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
               <div class="border-t pt-4" style="border-color: rgba(255,255,255,0.06);">
                 <div class="flex items-center justify-between mb-3">
                   <p class="text-sm font-medium text-slate-300">Biometric Identification</p>
-                  <span class="text-[11px] text-slate-500">HID DigitalPersona 4500</span>
+                  <span class="text-[11px] text-slate-500">Fingerprint Reader</span>
                 </div>
                 
                 <!-- If editing existing driver -->
@@ -581,7 +581,7 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                   <div>
                     <p class="text-xs font-medium text-slate-200">Biometric Registration upon Save</p>
                     <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                      After saving this driver, the HID DigitalPersona 4500 reader enrollment window will automatically open to capture the driver's fingerprint.
+                      After saving this driver, the fingerprint reader enrollment window will automatically open to capture the driver's fingerprint.
                     </p>
                   </div>
                 </div>

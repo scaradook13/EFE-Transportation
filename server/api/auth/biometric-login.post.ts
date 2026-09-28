@@ -10,6 +10,8 @@ export default defineEventHandler(async (event) => {
 
   let user: any = null
 
+  const template = body.template ? String(body.template) : ''
+
   if (username) {
     // 1:1 Biometric Verification for specified username
     user = await User.findOne({ username }).select('+biometric.template')
@@ -24,16 +26,32 @@ export default defineEventHandler(async (event) => {
     if (!user.biometric?.enrolled || !user.biometric?.template || user.biometric.template.length < 50) {
       throw createError({
         statusCode: 400,
-        message: `Biometric login is not enrolled for "${user.username}". Please sign in with your password and register your fingerprint in your profile.`
+        message: 'No fingerprint are registered'
       })
     }
 
-    const result = await biometricBridge.verify(user.biometric.template) as any
+    if (!template) {
+      throw createError({
+        statusCode: 400,
+        message: 'Fingerprint reader not detected on this device. Please connect your fingerprint reader.'
+      })
+    }
 
-    if (!result.match) {
-      const errMsg = result.error || result.message || 'Fingerprint not recognized. Please try again.'
-      logAudit(event, user._id.toString(), 'BIOMETRIC_LOGIN_FAILED', 'Auth', `Biometric login failed for ${user.fullName} (${user.username}): ${errMsg}`)
-      throw createError({ statusCode: 401, message: errMsg })
+    const checkResult = await biometricBridge.checkDuplicate(template, [{
+      id: user._id.toString(),
+      name: user.fullName,
+      identifier: user.username,
+      type: 'user' as const,
+      template: user.biometric.template
+    }])
+
+    if (checkResult.error && !checkResult.isDuplicate) {
+      throw createError({ statusCode: 503, message: 'Biometric scanner service is offline. Please ensure DigitalPersona service is running.' })
+    }
+
+    if (!checkResult.isDuplicate) {
+      logAudit(event, user._id.toString(), 'BIOMETRIC_LOGIN_FAILED', 'Auth', `Biometric login failed for ${user.fullName} (${user.username})`)
+      throw createError({ statusCode: 401, message: 'Failed login' })
     }
   } else {
     // 1:N Biometric Identification across all enrolled users
@@ -41,14 +59,15 @@ export default defineEventHandler(async (event) => {
     if (allEnrolledUsers.length === 0) {
       throw createError({
         statusCode: 400,
-        message: 'No user accounts currently have biometric login enrolled. Please sign in with username and password.'
+        message: 'No fingerprint are registered'
       })
     }
 
-    const result = await biometricBridge.identify()
-    if (!result.match || !result.templateId) {
-      const errMsg = result.error || result.message || 'Fingerprint capture timed out or failed. Please try again.'
-      throw createError({ statusCode: 401, message: errMsg })
+    if (!template) {
+      throw createError({
+        statusCode: 400,
+        message: 'Fingerprint reader not detected on this device. Please connect your fingerprint reader.'
+      })
     }
 
     // Format candidates for native comparison
@@ -60,14 +79,17 @@ export default defineEventHandler(async (event) => {
       template: u.biometric!.template!
     }))
 
-    const checkResult = await biometricBridge.checkDuplicate(result.templateId, candidates)
+    const checkResult = await biometricBridge.checkDuplicate(template, candidates)
+    if (checkResult.error && !checkResult.isDuplicate) {
+      throw createError({ statusCode: 503, message: 'Biometric scanner service is offline. Please ensure DigitalPersona service is running.' })
+    }
     if (checkResult.isDuplicate && checkResult.matchedCandidate) {
       user = await User.findById(checkResult.matchedCandidate.id).select('+biometric.template')
     } else {
       logAudit(event, 'unknown', 'BIOMETRIC_LOGIN_FAILED', 'Auth', 'Fingerprint touch detected on login, but no matching user account found')
       throw createError({
         statusCode: 401,
-        message: 'Fingerprint not recognized. No matching user account was found.'
+        message: 'Failed login'
       })
     }
   }

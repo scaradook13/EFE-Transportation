@@ -19,50 +19,50 @@ const statusMessage = ref('Checking fingerprint reader...')
 const stepState = ref<'checking' | 'ready' | 'scanning' | 'lift_finger' | 'processing' | 'success' | 'error'>('checking')
 const errorMessage = ref('')
 const readerConnected = ref(false)
-const readerName = ref('DigitalPersona 4500')
+const readerName = ref('Fingerprint Reader')
 const isCancelling = ref(false)
+
+const { checkLocalReader, startEnrollment, captureEnrollSample, cancelScan } = useBiometric()
 
 let isPolling = false
 let captureAbortController: AbortController | null = null
 
 const checkReaderAndStart = async () => {
   stepState.value = 'checking'
-  statusMessage.value = 'Connecting to DigitalPersona reader...'
+  statusMessage.value = 'Connecting to fingerprint reader...'
   errorMessage.value = ''
 
   try {
-    const statusRes = await $fetch<{ success: boolean; data: any }>('/api/biometric/reader-status')
+    const statusRes = await checkLocalReader()
     if (isCancelling.value) return
 
-    if (statusRes.data?.connected) {
+    if (statusRes.connected) {
       readerConnected.value = true
-      readerName.value = statusRes.data.description || 'DigitalPersona 4500'
+      readerName.value = statusRes.description || 'Fingerprint Reader'
     } else {
       readerConnected.value = false
       stepState.value = 'error'
-      errorMessage.value = 'Fingerprint reader not detected. Please connect the DigitalPersona fingerprint reader and try again.'
+      errorMessage.value = 'Fingerprint reader not detected on this device. Please connect your USB reader and try again.'
       return
     }
 
-    // Start enrollment session (will also auto-cancel any previous stale operation)
-    const startRes = await $fetch<{ success: boolean; data: any }>('/api/biometric/enroll/start', {
-      method: 'POST'
-    })
+    // Start enrollment session on this machine's reader
+    const startRes = await startEnrollment()
     if (isCancelling.value) return
 
-    if (startRes.data?.status === 'ready') {
+    if (startRes?.status === 'ready') {
       currentScan.value = 1
-      totalScans.value = startRes.data.totalScans || 3
+      totalScans.value = startRes.totalScans || 3
       stepState.value = 'ready'
       statusMessage.value = 'Place your finger on the reader'
       runCaptureLoop()
     } else {
-      throw new Error(startRes.data?.error || 'Failed to start enrollment')
+      throw new Error(startRes?.error || 'Failed to start enrollment')
     }
   } catch (err: any) {
     if (isCancelling.value) return
     stepState.value = 'error'
-    errorMessage.value = err?.data?.message || err?.message || 'Fingerprint reader not detected. Please connect the DigitalPersona fingerprint reader and try again.'
+    errorMessage.value = err?.message || 'Fingerprint reader not detected on this device. Please connect your USB reader and try again.'
   }
 }
 
@@ -76,17 +76,14 @@ const runCaptureLoop = async () => {
       statusMessage.value = `Scan ${currentScan.value} of ${totalScans.value} — Place finger firmly on reader`
 
       captureAbortController = new AbortController()
-      const capRes = await $fetch<{ success: boolean; data: any }>('/api/biometric/enroll/capture', {
-        method: 'POST',
-        signal: captureAbortController.signal
-      }).catch((err: any) => {
+      const capRes = await captureEnrollSample(captureAbortController.signal).catch((err: any) => {
         if (isCancelling.value) return null
         throw err
       })
 
       if (isCancelling.value || !capRes) break
 
-      const data = capRes.data
+      const data = capRes.data || capRes
       if (data.status === 'more_data') {
         currentScan.value = data.nextScan || (currentScan.value + 1)
         stepState.value = 'lift_finger'
@@ -127,7 +124,7 @@ const runCaptureLoop = async () => {
   } catch (err: any) {
     if (!isCancelling.value) {
       stepState.value = 'error'
-      errorMessage.value = err?.data?.message || err?.data?.statusMessage || err?.message || 'Fingerprint capture failed. Please place your finger correctly on the reader.'
+      errorMessage.value = err?.message || 'Fingerprint capture failed. Please place your finger correctly on the reader.'
     }
   } finally {
     isPolling = false
@@ -139,8 +136,7 @@ const handleCancel = () => {
   if (captureAbortController) {
     try { captureAbortController.abort() } catch {}
   }
-  // Dispatch cancel request asynchronously to immediately unblock the hardware reader
-  $fetch('/api/biometric/enroll/cancel', { method: 'POST' }).catch(() => {})
+  cancelScan()
   emit('close')
 }
 
@@ -153,7 +149,7 @@ onUnmounted(() => {
   if (captureAbortController) {
     try { captureAbortController.abort() } catch {}
   }
-  $fetch('/api/biometric/enroll/cancel', { method: 'POST' }).catch(() => {})
+  cancelScan()
 })
 </script>
 
@@ -176,7 +172,7 @@ onUnmounted(() => {
           {{ isReEnroll ? 'Re-register Fingerprint' : 'Register Fingerprint' }}
         </h3>
         <p class="text-xs text-slate-400 mt-1">
-          {{ userName }} • {{ readerName }}
+          {{ userName }}
         </p>
       </div>
 

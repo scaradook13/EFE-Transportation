@@ -34,12 +34,13 @@ export const taxiUnitRepository = {
 
     if (filters.status) query.status = filters.status
     if (filters.search) {
+      const sanitized = escapeRegex(filters.search.trim())
       query.$or = [
-        { taxiNumber: { $regex: filters.search, $options: 'i' } },
-        { plateNumber: { $regex: filters.search, $options: 'i' } },
-        { brand: { $regex: filters.search, $options: 'i' } },
-        { model: { $regex: filters.search, $options: 'i' } },
-        { taxiType: { $regex: filters.search, $options: 'i' } }
+        { taxiNumber: { $regex: sanitized, $options: 'i' } },
+        { plateNumber: { $regex: sanitized, $options: 'i' } },
+        { brand: { $regex: sanitized, $options: 'i' } },
+        { model: { $regex: sanitized, $options: 'i' } },
+        { taxiType: { $regex: sanitized, $options: 'i' } }
       ]
     }
 

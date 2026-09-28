@@ -1,5 +1,13 @@
 import mongoose from 'mongoose'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc.js'
+import timezone from 'dayjs/plugin/timezone.js'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+const TIMEZONE = 'Asia/Manila'
+
 import { TaxiUnit, type ITaxiUnit } from '../models/TaxiUnit'
 import { DriverAssignment, type IDriverAssignment } from '../models/DriverAssignment'
 import { calculateBoundary, formatBoundaryCurrency, formatTaxiType } from '../../shared/utils/boundary'
@@ -30,14 +38,16 @@ export function resolveDateRange(
   startDateStr: string
   endDateStr: string
 } {
-  const anchor = (dateInput && dayjs(dateInput).isValid()) ? dayjs(dateInput) : dayjs()
+  const anchor = (dateInput && dayjs(dateInput).isValid()) 
+    ? dayjs.tz(dateInput, TIMEZONE) 
+    : dayjs().tz(TIMEZONE)
 
   if (period === 'custom') {
     if (!startDateInput || !endDateInput) {
       throw createError({ statusCode: 400, message: 'Both start date and end date are required for custom date range' })
     }
-    const s = dayjs(startDateInput).startOf('day')
-    const e = dayjs(endDateInput).endOf('day')
+    const s = dayjs.tz(startDateInput, TIMEZONE).startOf('day')
+    const e = dayjs.tz(endDateInput, TIMEZONE).endOf('day')
     if (!s.isValid() || !e.isValid()) {
       throw createError({ statusCode: 400, message: 'Invalid start date or end date format' })
     }
@@ -302,7 +312,7 @@ export const boundaryReportService = {
     // 6. Aggregate Breakdown Points
     if (period === 'weekly') {
       for (const rec of records) {
-        const dStr = dayjs(rec.timeIn).format('YYYY-MM-DD')
+        const dStr = dayjs(rec.timeIn).tz(TIMEZONE).format('YYYY-MM-DD')
         const item = breakdown.find(b => b.date === dStr)
         if (item) {
           item.boundary += rec.boundary
@@ -313,7 +323,7 @@ export const boundaryReportService = {
       }
     } else if (period === 'monthly') {
       for (const rec of records) {
-        const dStr = dayjs(rec.timeIn).format('YYYY-MM-DD')
+        const dStr = dayjs(rec.timeIn).tz(TIMEZONE).format('YYYY-MM-DD')
         const item = breakdown.find(b => b.date === dStr)
         if (item) {
           item.boundary += rec.boundary
@@ -324,7 +334,7 @@ export const boundaryReportService = {
       }
     } else if (period === 'yearly') {
       for (const rec of records) {
-        const mStr = dayjs(rec.timeIn).format('YYYY-MM')
+        const mStr = dayjs(rec.timeIn).tz(TIMEZONE).format('YYYY-MM')
         const item = breakdown.find(b => b.date === mStr)
         if (item) {
           item.boundary += rec.boundary
@@ -340,7 +350,7 @@ export const boundaryReportService = {
         const rec = sorted[i]!
         breakdown.push({
           label: rec.driverName,
-          subLabel: dayjs(rec.timeIn).format('hh:mm A'),
+          subLabel: dayjs(rec.timeIn).tz(TIMEZONE).format('hh:mm A'),
           date: rec.timeIn,
           boundary: rec.boundary,
           dispatches: 1,

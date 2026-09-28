@@ -10,9 +10,15 @@ export default defineEventHandler(async (event) => {
   const targetType = body.targetType || 'user' // 'user' or 'driver'
   const config = useRuntimeConfig()
 
+  const template = body.template ? String(body.template) : ''
+
   if (mode === '1:1') {
     if (!body.userId) {
       throw createError({ statusCode: 400, message: 'User/Driver ID is required for 1:1 biometric verification.' })
+    }
+
+    if (!template) {
+      throw createError({ statusCode: 400, message: 'Fingerprint reader not detected on this device. Please connect your fingerprint reader.' })
     }
 
     // --- Driver biometric authentication ---
@@ -31,9 +37,19 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, message: `Driver ${driver.fullName} has not enrolled their fingerprint. Please register biometrics in the driver profile first.` })
       }
 
-      const result = await biometricBridge.verify(driver.biometric.template) as any
+      const checkResult = await biometricBridge.checkDuplicate(template, [{
+        id: driver._id.toString(),
+        name: driver.fullName,
+        identifier: driver.driverId,
+        type: 'driver',
+        template: driver.biometric.template
+      }])
 
-      if (result.match) {
+      if (checkResult.error && !checkResult.isDuplicate) {
+        throw createError({ statusCode: 503, message: 'Biometric scanner service is offline. Please ensure DigitalPersona service is running.' })
+      }
+
+      if (checkResult.isDuplicate) {
         logAudit(event, driver._id.toString(), 'BIOMETRIC_AUTH_SUCCESS', 'Auth', `Driver biometric 1:1 verification succeeded for ${driver.fullName} (${driver.driverId})`)
 
         const biometricToken = jwt.sign(
@@ -53,9 +69,8 @@ export default defineEventHandler(async (event) => {
           biometricToken
         }, `Driver ${driver.fullName} verified successfully`)
       } else {
-        const errMsg = result.error || result.message || 'Fingerprint not recognized. Please try again.'
-        logAudit(event, driver._id.toString(), 'BIOMETRIC_AUTH_FAILED', 'Auth', `Driver biometric 1:1 verification failed (${errMsg}) for ${driver.fullName} (${driver.driverId})`)
-        throw createError({ statusCode: 401, message: errMsg })
+        logAudit(event, driver._id.toString(), 'BIOMETRIC_AUTH_FAILED', 'Auth', `Driver biometric 1:1 verification failed for ${driver.fullName} (${driver.driverId})`)
+        throw createError({ statusCode: 401, message: 'Fingerprint not recognized. Please try again.' })
       }
     }
 
@@ -74,9 +89,19 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Your biometric registration is outdated or invalid. Please re-register your fingerprint in your profile.' })
     }
 
-    const result = await biometricBridge.verify(user.biometric.template) as any
+    const checkResult = await biometricBridge.checkDuplicate(template, [{
+      id: user._id.toString(),
+      name: user.fullName,
+      identifier: user.username,
+      type: 'user',
+      template: user.biometric.template
+    }])
 
-    if (result.match) {
+    if (checkResult.error && !checkResult.isDuplicate) {
+      throw createError({ statusCode: 503, message: 'Biometric scanner service is offline. Please ensure DigitalPersona service is running.' })
+    }
+
+    if (checkResult.isDuplicate) {
       logAudit(event, user._id.toString(), 'BIOMETRIC_AUTH_SUCCESS', 'Auth', `Biometric 1:1 verification succeeded for ${user.fullName} (${user.username})`)
 
       const biometricToken = jwt.sign(
@@ -97,58 +122,38 @@ export default defineEventHandler(async (event) => {
         biometricToken
       }, 'Fingerprint verified successfully')
     } else {
-      const errMsg = result.error || result.message || 'Fingerprint not recognized. Please try again.'
-      logAudit(event, user._id.toString(), 'BIOMETRIC_AUTH_FAILED', 'Auth', `Biometric 1:1 verification failed (${errMsg}) for ${user.fullName} (${user.username})`)
-      throw createError({ statusCode: 401, message: errMsg })
+      logAudit(event, user._id.toString(), 'BIOMETRIC_AUTH_FAILED', 'Auth', `Biometric 1:1 verification failed for ${user.fullName} (${user.username})`)
+      throw createError({ statusCode: 401, message: 'Fingerprint not recognized. Please try again.' })
     }
   } else {
     // Mode 1:N
-    const result = await biometricBridge.identify()
+    if (!template) {
+      throw createError({ statusCode: 400, message: 'Fingerprint reader not detected on this device. Please connect your fingerprint reader.' })
+    }
 
-    if (result.match && result.templateId) {
-      const user = await User.findOne({
-        'biometric.enrolled': true,
-        'biometric.template': result.templateId
-      })
+    const allEnrolledUsers = await User.find({ 'biometric.enrolled': true, isActive: true }).select('_id fullName username role email isPrimaryAdmin +biometric.template')
+    const candidates = allEnrolledUsers.filter(u => u.biometric?.template).map(u => ({
+      id: u._id.toString(),
+      name: u.fullName,
+      identifier: u.username,
+      type: 'user' as const,
+      template: u.biometric!.template!
+    }))
 
-      if (!user) {
-        // Fallback: check if any user has this template or if template was committed
-        const allEnrolledUsers = await User.find({ 'biometric.enrolled': true }).select('+biometric.template')
-        const matched = allEnrolledUsers.find(u => u.biometric?.template === result.templateId)
-        if (!matched || !matched.isActive) {
-          logAudit(event, 'unknown', 'BIOMETRIC_AUTH_FAILED', 'Auth', 'Biometric 1:N touch detected but no active user account matched template')
-          throw createError({ statusCode: 401, message: 'Fingerprint detected, but no matching user account was found.' })
-        }
-
-        logAudit(event, matched._id.toString(), 'BIOMETRIC_AUTH_SUCCESS', 'Auth', `Biometric 1:N identification succeeded for ${matched.fullName} (${matched.username})`)
-
-        const biometricToken = jwt.sign(
-          { userId: matched._id.toString(), username: matched.username, role: matched.role, type: 'biometric_auth' },
-          config.jwtSecret,
-          { expiresIn: '5m' }
-        )
-
-        return successResponse({
-          verified: true,
-          match: true,
-          user: {
-            userId: matched._id.toString(),
-            username: matched.username,
-            fullName: matched.fullName,
-            role: matched.role
-          },
-          biometricToken
-        }, `Welcome, ${matched.fullName}`)
-      }
-
-      if (!user.isActive) {
+    const checkResult = await biometricBridge.checkDuplicate(template, candidates)
+    if (checkResult.error && !checkResult.isDuplicate) {
+      throw createError({ statusCode: 503, message: 'Biometric scanner service is offline. Please ensure DigitalPersona service is running.' })
+    }
+    if (checkResult.isDuplicate && checkResult.matchedCandidate) {
+      const matched = await User.findById(checkResult.matchedCandidate.id)
+      if (!matched || !matched.isActive) {
         throw createError({ statusCode: 403, message: 'Account is deactivated.' })
       }
 
-      logAudit(event, user._id.toString(), 'BIOMETRIC_AUTH_SUCCESS', 'Auth', `Biometric 1:N identification succeeded for ${user.fullName} (${user.username})`)
+      logAudit(event, matched._id.toString(), 'BIOMETRIC_AUTH_SUCCESS', 'Auth', `Biometric 1:N identification succeeded for ${matched.fullName} (${matched.username})`)
 
       const biometricToken = jwt.sign(
-        { userId: user._id.toString(), username: user.username, role: user.role, type: 'biometric_auth' },
+        { userId: matched._id.toString(), username: matched.username, role: matched.role, type: 'biometric_auth' },
         config.jwtSecret,
         { expiresIn: '5m' }
       )
@@ -157,13 +162,13 @@ export default defineEventHandler(async (event) => {
         verified: true,
         match: true,
         user: {
-          userId: user._id.toString(),
-          username: user.username,
-          fullName: user.fullName,
-          role: user.role
+          userId: matched._id.toString(),
+          username: matched.username,
+          fullName: matched.fullName,
+          role: matched.role
         },
         biometricToken
-      }, `Welcome, ${user.fullName}`)
+      }, `Welcome, ${matched.fullName}`)
     } else {
       logAudit(event, 'unknown', 'BIOMETRIC_AUTH_FAILED', 'Auth', 'Biometric 1:N identification failed — no match')
       throw createError({ statusCode: 401, message: 'Fingerprint not recognized. Please try again.' })

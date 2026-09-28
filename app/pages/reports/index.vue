@@ -548,7 +548,8 @@ const selectedTaxiObj = computed(() => {
         <table class="data-table">
           <thead>
             <tr>
-              <th>Date</th>
+              <th>Date Dispatched</th>
+              <th>Date Returned</th>
               <th>Driver</th>
               <th>Time In</th>
               <th>Time Out</th>
@@ -559,7 +560,7 @@ const selectedTaxiObj = computed(() => {
           </thead>
           <tbody>
             <tr v-if="taxiReport.records.length === 0">
-              <td colspan="7" class="text-center py-8 text-slate-500 text-sm italic">
+              <td colspan="8" class="text-center py-8 text-slate-500 text-sm italic">
                 No boundary records found for the selected period.
               </td>
             </tr>
@@ -569,6 +570,9 @@ const selectedTaxiObj = computed(() => {
             >
               <td class="font-mono text-xs">
                 {{ rec.timeIn ? new Date(rec.timeIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }}
+              </td>
+              <td class="font-mono text-xs">
+                {{ rec.timeOut ? new Date(rec.timeOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : (rec.status === 'Active' ? 'Active' : '—') }}
               </td>
               <td class="font-medium text-white">
                 {{ rec.driverName }}
@@ -597,7 +601,7 @@ const selectedTaxiObj = computed(() => {
           </tbody>
           <tfoot v-if="taxiReport.records.length > 0">
             <tr class="bg-white/5 font-semibold text-white">
-              <td colspan="4" class="py-3 text-xs uppercase tracking-wider text-slate-400">Total</td>
+              <td colspan="5" class="py-3 text-xs uppercase tracking-wider text-slate-400">Total</td>
               <td class="py-3 text-xs font-mono">{{ taxiReport.summary.formattedTotalHours }}</td>
               <td class="py-3 text-xs">{{ taxiReport.summary.totalDispatches }} shifts</td>
               <td class="py-3 text-right text-sm font-mono text-green-400 font-bold">

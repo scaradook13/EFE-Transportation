@@ -20,9 +20,9 @@ export default defineNuxtConfig({
     head: {
       title: 'EFE Taxi Dispatch System',
       link: [
-        { rel: 'icon', type: 'image/png', href: '/logo.png' },
-        { rel: 'shortcut icon', href: '/logo.png' },
-        { rel: 'apple-touch-icon', href: '/logo.png' }
+        { rel: 'icon', type: 'image/png', href: '/logo.png?v=3' },
+        { rel: 'shortcut icon', type: 'image/png', href: '/logo.png?v=3' },
+        { rel: 'apple-touch-icon', href: '/logo.png?v=3' }
       ]
     }
   },

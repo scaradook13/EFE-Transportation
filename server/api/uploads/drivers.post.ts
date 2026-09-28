@@ -1,8 +1,10 @@
 import mongoose from 'mongoose'
 import { v4 as uuidv4 } from 'uuid'
+import { rateLimitService } from '../../services/rateLimitService'
 
 export default defineEventHandler(async (event) => {
-  requireRole(event, 'admin', 'hr')
+  const authUser = requireRole(event, 'admin', 'hr')
+  await rateLimitService.checkRateLimit(`upload:${authUser.userId}`, 30, 15)
 
   const formData = await readMultipartFormData(event)
 
@@ -55,6 +57,8 @@ export default defineEventHandler(async (event) => {
 
   const fileId = uploadStream.id
   const publicPath = `/api/uploads/photos/${fileId}`
+
+  await rateLimitService.incrementAttempts(`upload:${authUser.userId}`, 15)
 
   return successResponse({ url: publicPath, fileId }, 'Photo uploaded successfully')
 })

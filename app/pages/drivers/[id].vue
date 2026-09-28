@@ -14,19 +14,14 @@ const driver = ref(await driverStore.fetchById(id).catch(() => null))
 useHead({ title: computed(() => `${driver.value?.fullName || 'Driver'} — EFE Taxi Dispatch`) })
 
 // Reader status
+const { checkLocalReader } = useBiometric()
 const readerConnected = ref(false)
-const readerName = ref('DigitalPersona 4500')
+const readerName = ref('Fingerprint Reader')
 
 const checkReaderStatus = async () => {
-  try {
-    const res = await $fetch<{ success: boolean; data: any }>('/api/biometric/reader-status')
-    if (res?.data) {
-      readerConnected.value = !!res.data.connected
-      readerName.value = res.data.description || 'HID DigitalPersona U.are.U 4500'
-    }
-  } catch {
-    readerConnected.value = false
-  }
+  const status = await checkLocalReader()
+  readerConnected.value = status.connected
+  readerName.value = status.description || 'Fingerprint Reader'
 }
 
 onMounted(() => {
@@ -173,7 +168,7 @@ const age = computed(() => {
             </div>
             <div>
               <h2 class="text-base font-bold text-white uppercase tracking-wider">Driver Biometric Authentication</h2>
-              <p class="text-xs text-slate-400">HID DigitalPersona U.are.U 4500 Enrollment</p>
+              <p class="text-xs text-slate-400">Fingerprint Biometric Enrollment</p>
             </div>
           </div>
 
@@ -256,7 +251,7 @@ const age = computed(() => {
               <div class="space-y-0.5">
                 <p class="text-sm font-bold text-white">No Biometric Registered</p>
                 <p class="text-xs text-slate-400">
-                  Register this driver's fingerprint biometric on the HID DigitalPersona 4500 reader.
+                  Register this driver's fingerprint biometric on the fingerprint reader.
                 </p>
                 <p class="text-xs text-slate-500">
                   Enrolling biometric data enables fingerprint-authenticated shift operations and taxi releases.

@@ -2,6 +2,7 @@ export const TAXI_TYPES = ['BATMAN', 'SUPERMAN'] as const
 export type TaxiType = (typeof TAXI_TYPES)[number]
 
 export const BOUNDARY_CONFIG = {
+  BUFFER_MINUTES: 15,
   BASE_HOURS: 16,
   OVERTIME_HOURLY_RATE: 100,
   OVERTIME_ROUNDING_MINUTES: 45,
@@ -51,10 +52,10 @@ export function formatBoundaryCurrency(amount: number | null | undefined): strin
  * Calculates the boundary based on deployment/dispatch time and taxi type.
  *
  * Rules:
- * - If elapsed time < 16 hours: Boundary = ₱0, Overtime = 0h
+ * - If elapsed time <= 15 minutes (buffer period): Boundary = ₱0, Overtime = 0h
+ * - If elapsed time > 15 minutes:
+ *     Instantly charged the base boundary (Batman: ₱920, Superman: ₱990)
  * - If elapsed time >= 16 hours:
- *     Batman base: ₱920
- *     Superman base: ₱990
  *     Overtime elapsed time = elapsed time - 16 hours
  *     Overtime hours = completed overtime hours + (remaining overtime minutes >= 45 ? 1 : 0)
  *     Boundary = Base boundary + (Overtime hours * ₱100)
@@ -78,11 +79,17 @@ export function calculateBoundary(
   let overtimeHours = 0
   let boundary = 0
 
-  if (elapsedHours >= BOUNDARY_CONFIG.BASE_HOURS) {
-    const completedOvertimeHours = elapsedHours - BOUNDARY_CONFIG.BASE_HOURS
-    const hasAdditionalHour = elapsedMinutes >= BOUNDARY_CONFIG.OVERTIME_ROUNDING_MINUTES
-    overtimeHours = completedOvertimeHours + (hasAdditionalHour ? 1 : 0)
-    boundary = baseBoundary + (overtimeHours * BOUNDARY_CONFIG.OVERTIME_HOURLY_RATE)
+  // If elapsed time is greater than the 15-minute buffer, charge the base boundary
+  if (totalMinutes > BOUNDARY_CONFIG.BUFFER_MINUTES) {
+    boundary = baseBoundary
+
+    // Overtime kicks in once elapsed hours reach or exceed 16 hours
+    if (elapsedHours >= BOUNDARY_CONFIG.BASE_HOURS) {
+      const completedOvertimeHours = elapsedHours - BOUNDARY_CONFIG.BASE_HOURS
+      const hasAdditionalHour = elapsedMinutes >= BOUNDARY_CONFIG.OVERTIME_ROUNDING_MINUTES
+      overtimeHours = completedOvertimeHours + (hasAdditionalHour ? 1 : 0)
+      boundary = baseBoundary + (overtimeHours * BOUNDARY_CONFIG.OVERTIME_HOURLY_RATE)
+    }
   }
 
   return {

@@ -29,9 +29,10 @@ export const userRepository = {
     if (filters.role) query.role = filters.role
     if (filters.isActive !== undefined) query.isActive = filters.isActive
     if (filters.search) {
+      const sanitized = escapeRegex(filters.search.trim())
       query.$or = [
-        { username: { $regex: filters.search, $options: 'i' } },
-        { fullName: { $regex: filters.search, $options: 'i' } }
+        { username: { $regex: sanitized, $options: 'i' } },
+        { fullName: { $regex: sanitized, $options: 'i' } }
       ]
     }
 

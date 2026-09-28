@@ -496,7 +496,8 @@ const formatDateOnly = (d: string) => {
           <table class="data-table">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>Date Dispatched</th>
+                <th>Date Returned</th>
                 <th>Driver</th>
                 <th>Assignment #</th>
                 <th>Dispatch Time</th>
@@ -510,6 +511,9 @@ const formatDateOnly = (d: string) => {
               <tr v-for="rec in report.records" :key="rec._id">
                 <td class="whitespace-nowrap text-slate-300 text-xs">
                   {{ formatDateOnly(rec.timeIn) }}
+                </td>
+                <td class="whitespace-nowrap text-slate-300 text-xs">
+                  {{ rec.timeOut ? formatDateOnly(rec.timeOut) : (rec.status === 'Active' ? 'Active' : '—') }}
                 </td>
                 <td>
                   <p class="font-medium text-white text-sm">{{ rec.driverName }}</p>
@@ -553,7 +557,7 @@ const formatDateOnly = (d: string) => {
             </tbody>
             <tfoot>
               <tr class="border-t font-semibold bg-white/[0.02]" style="border-color: rgba(255,255,255,0.08);">
-                <td colspan="5" class="text-white">
+                <td colspan="6" class="text-white">
                   Total Dispatches: {{ report.summary.totalDispatches }}
                 </td>
                 <td class="font-mono text-xs text-slate-300">

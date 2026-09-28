@@ -63,15 +63,16 @@ export const driverRepository = {
     if (filters.employmentStatus) query.employmentStatus = filters.employmentStatus
     if (filters.operationalStatus) query.operationalStatus = filters.operationalStatus
     if (filters.search) {
+      const sanitized = escapeRegex(filters.search.trim())
       query.$or = [
-        { fullName: { $regex: filters.search, $options: 'i' } },
-        { driverId: { $regex: filters.search, $options: 'i' } },
-        { licenseNumber: { $regex: filters.search, $options: 'i' } },
-        { contactNumber: { $regex: filters.search, $options: 'i' } },
-        { tinId: { $regex: filters.search, $options: 'i' } },
-        { sssId: { $regex: filters.search, $options: 'i' } },
-        { philhealthId: { $regex: filters.search, $options: 'i' } },
-        { pagibigId: { $regex: filters.search, $options: 'i' } }
+        { fullName: { $regex: sanitized, $options: 'i' } },
+        { driverId: { $regex: sanitized, $options: 'i' } },
+        { licenseNumber: { $regex: sanitized, $options: 'i' } },
+        { contactNumber: { $regex: sanitized, $options: 'i' } },
+        { tinId: { $regex: sanitized, $options: 'i' } },
+        { sssId: { $regex: sanitized, $options: 'i' } },
+        { philhealthId: { $regex: sanitized, $options: 'i' } },
+        { pagibigId: { $regex: sanitized, $options: 'i' } }
       ]
     }
 

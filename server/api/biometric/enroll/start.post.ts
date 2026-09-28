@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   if (!reader.connected) {
     throw createError({
       statusCode: 400,
-      message: 'Fingerprint reader not detected. Please connect the DigitalPersona fingerprint reader and try again.'
+      message: 'Fingerprint reader not detected. Please connect your fingerprint reader and try again.'
     })
   }
 

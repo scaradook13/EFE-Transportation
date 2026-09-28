@@ -159,7 +159,7 @@ const formatDate = (d: string | null) => {
           </div>
           <div>
             <h2 class="text-base font-bold text-white uppercase tracking-wider">Biometric Authentication</h2>
-            <p class="text-xs text-slate-400">HID DigitalPersona U.are.U 4500 Integration</p>
+            <p class="text-xs text-slate-400">Fingerprint Biometric Integration</p>
           </div>
         </div>
 
@@ -174,7 +174,7 @@ const formatDate = (d: string | null) => {
             <span :class="statusData?.readerConnected ? 'text-emerald-300 font-medium' : 'text-red-300 font-medium'">
               {{ statusData?.readerConnected ? 'Connected' : 'Not Connected' }}
             </span>
-            <span class="text-slate-500 text-[11px] block">{{ statusData?.readerName || 'DigitalPersona 4500' }}</span>
+            <span class="text-slate-500 text-[11px] block">{{ statusData?.readerName || 'Fingerprint Reader' }}</span>
           </div>
         </div>
       </div>
@@ -266,34 +266,47 @@ const formatDate = (d: string | null) => {
     />
 
     <!-- Removal Confirmation Modal -->
-    <div v-if="showRemoveModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div class="glass-card w-full max-w-sm p-6 border border-white/10 relative shadow-2xl text-center">
-        <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-          <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showRemoveModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+          @click.self="showRemoveModal = false"
+        >
+          <div class="glass-card w-full max-w-sm p-6 border border-white/10 relative shadow-2xl text-center">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/20 shadow-lg shadow-red-500/10">
+              <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+            </div>
+            <h3 class="text-base font-bold text-white mb-2">Remove fingerprint?</h3>
+            <p class="text-xs text-slate-400 leading-relaxed mb-6">
+              This will remove your registered biometric authentication credential. You will need to re-register before performing biometric-protected actions.
+            </p>
+            <div class="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                class="btn-secondary text-xs px-4 py-2"
+                :disabled="removing"
+                @click="showRemoveModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
+                :disabled="removing"
+                @click="handleRemove"
+              >
+                {{ removing ? 'Removing...' : 'Remove' }}
+              </button>
+            </div>
+          </div>
         </div>
-        <h3 class="text-base font-bold text-white mb-2">Remove fingerprint?</h3>
-        <p class="text-xs text-slate-400 leading-relaxed mb-6">
-          This will remove your registered biometric authentication credential. You will need to re-register before performing biometric-protected actions.
-        </p>
-        <div class="flex items-center justify-center gap-3">
-          <button
-            type="button"
-            class="btn-secondary text-xs px-4 py-2"
-            :disabled="removing"
-            @click="showRemoveModal = false"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors"
-            :disabled="removing"
-            @click="handleRemove"
-          >
-            {{ removing ? 'Removing...' : 'Remove' }}
-          </button>
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
