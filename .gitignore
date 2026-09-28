@@ -26,3 +26,6 @@ logs
 # Automated database backups
 backups/
 !backups/**/.gitkeep
+
+# Documentation PDFs
+*.pdf
