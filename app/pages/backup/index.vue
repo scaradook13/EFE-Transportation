@@ -99,7 +99,7 @@ const handleDownload = async () => {
     toast.add({
       title: 'Backup Downloaded',
       description: `Complete JSON backup (${filename}) saved successfully.`,
-      color: 'green',
+      color: 'success',
       icon: 'i-heroicons-check-circle'
     })
 
@@ -109,7 +109,7 @@ const handleDownload = async () => {
     toast.add({
       title: 'Export Failed',
       description: err.message || 'Could not download database backup.',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle'
     })
   } finally {
@@ -130,7 +130,7 @@ const handleFileSelect = (event: Event) => {
     toast.add({
       title: 'Invalid File',
       description: 'Please select a valid .json backup file.',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-circle'
     })
     target.value = ''
@@ -182,7 +182,7 @@ const handleFileSelect = (event: Event) => {
       toast.add({
         title: 'Parsing Error',
         description: 'Unable to parse JSON file structure. Verify the file is not corrupted.',
-        color: 'red'
+        color: 'error'
       })
       selectedFile.value = null
       filePreview.value = null
@@ -213,7 +213,7 @@ const executeRestore = async () => {
     toast.add({
       title: 'Database Restored!',
       description: res.message || 'All collections have been successfully restored.',
-      color: 'green',
+      color: 'success',
       icon: 'i-heroicons-check-circle'
     })
 
@@ -224,7 +224,7 @@ const executeRestore = async () => {
     toast.add({
       title: 'Restore Failed',
       description: err.data?.message || err.message || 'Could not restore database.',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle'
     })
   } finally {
@@ -250,7 +250,7 @@ const executeRestore = async () => {
       <div class="flex items-center gap-3">
         <UButton
           icon="i-heroicons-arrow-path"
-          color="gray"
+          color="neutral"
           variant="ghost"
           :loading="loadingStats"
           @click="loadStats"
@@ -375,16 +375,19 @@ const executeRestore = async () => {
         </div>
 
         <div class="pt-4 border-t border-white/5">
-          <UButton
-            size="lg"
-            color="emerald"
-            class="w-full justify-center font-bold shadow-lg"
-            :loading="downloading"
+          <button
+            type="button"
+            class="w-full group py-3 px-5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2.5 border border-emerald-400/30 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:via-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-950/50 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 hover:scale-[1.01] active:translate-y-0 active:scale-[0.99] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+            :disabled="downloading"
             @click="handleDownload"
           >
-            <UIcon name="i-heroicons-arrow-down-tray" class="w-5 h-5 mr-2" />
-            Download Complete JSON Backup
-          </UButton>
+            <UIcon
+              :name="downloading ? 'i-heroicons-arrow-path' : 'i-heroicons-arrow-down-tray'"
+              class="w-5 h-5 transition-transform duration-200"
+              :class="{ 'animate-spin': downloading, 'group-hover:translate-y-0.5': !downloading }"
+            />
+            <span>{{ downloading ? 'Exporting Database...' : 'Download Complete JSON Backup' }}</span>
+          </button>
         </div>
       </div>
 
@@ -446,7 +449,7 @@ const executeRestore = async () => {
               </div>
               <UButton
                 icon="i-heroicons-x-mark"
-                color="gray"
+                color="neutral"
                 variant="ghost"
                 size="xs"
                 @click="clearSelectedFile"
@@ -484,17 +487,24 @@ const executeRestore = async () => {
         </div>
 
         <div class="pt-4 border-t border-white/5">
-          <UButton
-            size="lg"
-            color="amber"
-            class="w-full justify-center font-bold shadow-lg"
-            :disabled="!selectedFile"
-            :loading="restoring"
+          <button
+            type="button"
+            class="w-full group py-3 px-5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 border"
+            :class="[
+              !selectedFile || restoring
+                ? 'opacity-40 cursor-not-allowed bg-slate-800/60 border-white/5 text-slate-400'
+                : 'text-white border-amber-400/30 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-500 hover:via-amber-400 hover:to-yellow-500 shadow-lg shadow-amber-950/50 hover:shadow-xl hover:shadow-amber-500/30 hover:-translate-y-0.5 hover:scale-[1.01] active:translate-y-0 active:scale-[0.99] cursor-pointer'
+            ]"
+            :disabled="!selectedFile || restoring"
             @click="showConfirmModal = true"
           >
-            <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 mr-2" />
-            Restore Database from Selected File
-          </UButton>
+            <UIcon
+              name="i-heroicons-arrow-path"
+              class="w-5 h-5 transition-transform duration-200"
+              :class="{ 'animate-spin': restoring, 'group-hover:rotate-45': !restoring && selectedFile }"
+            />
+            <span>{{ restoring ? 'Restoring Database...' : 'Restore Database from Selected File' }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -527,22 +537,23 @@ const executeRestore = async () => {
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-              <UButton
-                color="gray"
-                variant="ghost"
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 cursor-pointer"
                 :disabled="restoring"
                 @click="showConfirmModal = false"
               >
                 Cancel
-              </UButton>
-              <UButton
-                color="red"
-                class="font-bold flex items-center gap-2"
-                :loading="restoring"
+              </button>
+              <button
+                type="button"
+                class="px-5 py-2 text-sm font-bold rounded-xl text-white flex items-center gap-2 border border-red-400/30 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-950/40 hover:shadow-xl hover:shadow-red-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="restoring"
                 @click="executeRestore"
               >
+                <UIcon v-if="restoring" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
                 <span>{{ restoring ? 'Restoring Database...' : 'Yes, Overwrite & Restore' }}</span>
-              </UButton>
+              </button>
             </div>
           </div>
         </div>
