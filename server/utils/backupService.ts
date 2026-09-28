@@ -234,7 +234,20 @@ export async function checkAndRunScheduledBackups() {
 function parseMetaFromContent(raw: string) {
   try {
     const parsed = JSON.parse(raw)
-    return parsed._efe_backup_meta || null
+    const meta = parsed._efe_backup_meta || null
+    if (!meta) return null
+
+    const normalizeNumber = (v: any): number => {
+      if (typeof v === 'number') return v
+      if (v && typeof v === 'object' && v.$numberInt) return parseInt(v.$numberInt, 10)
+      return typeof v === 'string' ? parseInt(v, 10) || 0 : 0
+    }
+
+    return {
+      ...meta,
+      totalDocuments: normalizeNumber(meta.totalDocuments),
+      totalCollections: normalizeNumber(meta.totalCollections)
+    }
   } catch {
     return null
   }

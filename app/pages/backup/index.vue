@@ -138,6 +138,12 @@ const formatTimestamp = (iso?: string | null) => {
   }
 }
 
+const formatNumber = (v: any): number => {
+  if (typeof v === 'number') return v
+  if (v && typeof v === 'object' && v.$numberInt) return parseInt(v.$numberInt, 10)
+  return typeof v === 'string' ? parseInt(v, 10) || 0 : 0
+}
+
 // ------------------------------------------------------------------
 // MANUAL EXPORT & UPLOAD RESTORE
 // ------------------------------------------------------------------
@@ -609,7 +615,7 @@ const executeRestore = async () => {
                 <div>
                   <span class="text-slate-400">Records Saved:</span>
                   <span class="ml-1 font-bold text-emerald-400">
-                    {{ autoStatus?.daily?.totalDocuments ?? 0 }}
+                    {{ formatNumber(autoStatus?.daily?.totalDocuments) }}
                   </span>
                 </div>
                 <div>
@@ -700,7 +706,7 @@ const executeRestore = async () => {
                       <span class="text-[10px] font-mono text-slate-400">({{ item.sizeFormatted }})</span>
                     </div>
                     <div class="text-[11px] text-slate-400 mt-0.5">
-                      {{ item.totalDocuments }} records &bull; {{ formatTimestamp(item.createdAt) }}
+                      {{ formatNumber(item.totalDocuments) }} records &bull; {{ formatTimestamp(item.createdAt) }}
                     </div>
                   </div>
 
@@ -966,7 +972,7 @@ const executeRestore = async () => {
             </div>
 
             <p class="text-sm text-slate-300 leading-relaxed">
-              You are about to restore <strong>{{ restoreTarget?.totalDocuments ?? 0 }} documents</strong> from:
+              You are about to restore <strong>{{ formatNumber(restoreTarget?.totalDocuments) }} documents</strong> from:
               <br />
               <span class="font-mono text-amber-300 font-semibold text-xs break-all">{{ restoreTarget?.filename }}</span>
             </p>
