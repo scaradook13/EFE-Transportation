@@ -200,7 +200,6 @@ const clearSelectedFile = () => {
 const executeRestore = async () => {
   if (!selectedFile.value) return
   restoring.value = true
-  showConfirmModal.value = false
 
   try {
     const formData = new FormData()
@@ -218,6 +217,7 @@ const executeRestore = async () => {
       icon: 'i-heroicons-check-circle'
     })
 
+    showConfirmModal.value = false
     clearSelectedFile()
     await loadStats()
   } catch (err: any) {
@@ -500,49 +500,58 @@ const executeRestore = async () => {
     </div>
 
     <!-- Confirmation Modal for Restore -->
-    <UModal v-model="showConfirmModal">
-      <div class="p-6 space-y-4" style="background: #161b26;">
-        <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-red-500/20 text-red-400 border border-red-500/30">
-            <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="!restoring && (showConfirmModal = false)" />
+          <div class="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-red-500/20 text-red-400 border border-red-500/30">
+                <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-white">Confirm Database Restore</h3>
+                <p class="text-xs text-slate-400">This action will replace existing database records</p>
+              </div>
+            </div>
+
+            <p class="text-sm text-slate-300 leading-relaxed">
+              You are about to restore <strong>{{ filePreview?.totalDocuments }} documents</strong> across
+              <strong>{{ filePreview?.collections.length }} collections</strong> from file:
+              <br />
+              <span class="font-mono text-amber-300 font-semibold text-xs break-all">{{ filePreview?.filename }}</span>
+            </p>
+
+            <div class="rounded-xl p-3 text-xs leading-relaxed text-amber-300 bg-amber-500/10 border border-amber-500/20">
+              Any current records in the matching collections will be replaced with the data from the backup file.
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+              <UButton
+                color="gray"
+                variant="ghost"
+                :disabled="restoring"
+                @click="showConfirmModal = false"
+              >
+                Cancel
+              </UButton>
+              <UButton
+                color="red"
+                class="font-bold flex items-center gap-2"
+                :loading="restoring"
+                @click="executeRestore"
+              >
+                <span>{{ restoring ? 'Restoring Database...' : 'Yes, Overwrite & Restore' }}</span>
+              </UButton>
+            </div>
           </div>
-          <div>
-            <h3 class="text-lg font-bold text-white">Confirm Database Restore</h3>
-            <p class="text-xs text-slate-400">This action will update existing database records</p>
-          </div>
         </div>
-
-        <p class="text-sm text-slate-300 leading-relaxed">
-          You are about to restore <strong>{{ filePreview?.totalDocuments }} documents</strong> across
-          <strong>{{ filePreview?.collections.length }} collections</strong> from file:
-          <br />
-          <span class="font-mono text-amber-300 font-semibold text-xs">{{ filePreview?.filename }}</span>
-        </p>
-
-        <div
-          class="rounded-xl p-3 text-xs leading-relaxed text-amber-300 bg-amber-500/10 border border-amber-500/20"
-        >
-          Any current records in the matching collections will be replaced with the data from the backup file.
-        </div>
-
-        <div class="flex justify-end gap-3 pt-3">
-          <UButton
-            color="gray"
-            variant="ghost"
-            @click="showConfirmModal = false"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            color="red"
-            class="font-bold"
-            :loading="restoring"
-            @click="executeRestore"
-          >
-            Yes, Overwrite & Restore Database
-          </UButton>
-        </div>
-      </div>
-    </UModal>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
