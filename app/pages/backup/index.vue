@@ -234,7 +234,7 @@ const executeRestore = async () => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="p-6 sm:p-8 lg:p-10 pb-16 max-w-7xl mx-auto space-y-8">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
@@ -262,7 +262,7 @@ const executeRestore = async () => {
 
     <!-- Live Database Status Banner -->
     <div
-      class="rounded-2xl p-6 border transition-all"
+      class="rounded-2xl p-6 lg:p-7 border transition-all shadow-xl"
       style="background: #161b26; border-color: rgba(255, 255, 255, 0.08);"
     >
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -334,10 +334,10 @@ const executeRestore = async () => {
     </div>
 
     <!-- Action Cards Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
       <!-- 1. BACKUP / EXPORT CARD -->
       <div
-        class="rounded-2xl p-6 border flex flex-col justify-between"
+        class="rounded-2xl p-6 lg:p-8 border flex flex-col justify-between shadow-xl"
         style="background: #161b26; border-color: rgba(255, 255, 255, 0.08);"
       >
         <div>
@@ -374,7 +374,7 @@ const executeRestore = async () => {
           </div>
         </div>
 
-        <div class="pt-4 border-t border-white/5">
+        <div class="pt-6 border-t border-white/5">
           <button
             type="button"
             class="w-full group py-3 px-5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2.5 border border-emerald-400/30 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:via-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-950/50 hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 hover:scale-[1.01] active:translate-y-0 active:scale-[0.99] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
@@ -393,7 +393,7 @@ const executeRestore = async () => {
 
       <!-- 2. RESTORE / IMPORT CARD -->
       <div
-        class="rounded-2xl p-6 border flex flex-col justify-between"
+        class="rounded-2xl p-6 lg:p-8 border flex flex-col justify-between shadow-xl"
         style="background: #161b26; border-color: rgba(255, 255, 255, 0.08);"
       >
         <div>
@@ -486,7 +486,7 @@ const executeRestore = async () => {
           </div>
         </div>
 
-        <div class="pt-4 border-t border-white/5">
+        <div class="pt-6 border-t border-white/5">
           <button
             type="button"
             class="w-full group py-3 px-5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 border"
