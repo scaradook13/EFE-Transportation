@@ -30,6 +30,7 @@ const userForBioAction = ref<User | null>(null)
 const removingBio = ref(false)
 const showEnrollModal = ref(false)
 const isReEnroll = ref(false)
+const showBioPromptModal = ref(false)
 
 const form = reactive({
   username: '', password: '', fullName: '', email: '',
@@ -59,6 +60,7 @@ const openCreate = () => {
   formError.value = ''
   clearErrors()
   showPassword.value = false
+  showBioPromptModal.value = false
   showModal.value = true
 }
 
@@ -71,6 +73,7 @@ const openEdit = (user: User) => {
   formError.value = ''
   clearErrors()
   showPassword.value = false
+  showBioPromptModal.value = false
   Object.assign(form, { username: user.username, password: '', fullName: user.fullName, email: user.email || '', role: user.role, isActive: user.isActive })
   showModal.value = true
 }
@@ -78,6 +81,21 @@ const openEdit = (user: User) => {
 const openEnrollForUser = (user: User, reEnroll = false) => {
   userForBioAction.value = user
   isReEnroll.value = reEnroll || !!user.biometric?.enrolled
+  showEnrollModal.value = true
+}
+
+const skipBioPrompt = () => {
+  showBioPromptModal.value = false
+  toast.add({
+    title: 'Biometrics skipped',
+    description: 'You can register fingerprint biometrics anytime from the user list.',
+    color: 'info'
+  })
+}
+
+const startBioFromPrompt = () => {
+  showBioPromptModal.value = false
+  isReEnroll.value = false
   showEnrollModal.value = true
 }
 
@@ -116,14 +134,13 @@ const handleSubmit = async () => {
       await loadUsers()
     } else {
       const createdRes = await $fetch<{ success: boolean; data: User }>('/api/users', { method: 'POST', body: form })
-      toast.add({ title: 'User created successfully', description: 'Please register fingerprint for biometric setup.', color: 'success' })
+      toast.add({ title: 'User created successfully', color: 'success' })
       showModal.value = false
       await loadUsers()
-      // Seamlessly prompt to register fingerprint for the newly created user (Requirement 6)
+      // Prompt admin to choose whether to register biometric now or later
       if (createdRes?.data) {
         userForBioAction.value = createdRes.data
-        isReEnroll.value = false
-        showEnrollModal.value = true
+        showBioPromptModal.value = true
       }
     }
   } catch (err: unknown) {
@@ -431,6 +448,58 @@ const roleColor = (role: string) => {
       @close="showEnrollModal = false"
       @enrolled="loadUsers"
     />
+
+    <!-- Biometric Setup Choice Modal (Post-Creation) -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showBioPromptModal && userForBioAction"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+          @click.self="skipBioPrompt"
+        >
+          <div class="glass-card w-full max-w-md p-6 border border-white/10 relative shadow-2xl text-center">
+            <button
+              type="button"
+              class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors"
+              title="Close"
+              @click="skipBioPrompt"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
+
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto mb-4 border border-amber-500/20 shadow-lg shadow-amber-500/10">
+              <UIcon name="i-heroicons-finger-print" class="w-7 h-7" />
+            </div>
+
+            <h3 class="text-lg font-bold text-white mb-2">Register Biometrics?</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-1">
+              Account for <strong class="text-white">{{ userForBioAction.fullName }}</strong> created successfully!
+            </p>
+            <p class="text-xs text-slate-400 mb-6">
+              Would you like to register their fingerprint biometric credentials now, or set it up later?
+            </p>
+
+            <div class="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                class="btn-secondary flex-1 py-2.5 text-sm"
+                @click="skipBioPrompt"
+              >
+                Set Up Later
+              </button>
+              <button
+                type="button"
+                class="btn-primary flex-1 py-2.5 text-sm flex items-center justify-center gap-2"
+                @click="startBioFromPrompt"
+              >
+                <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
+                Register Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Biometric Removal Confirmation Modal -->
     <Teleport to="body">
