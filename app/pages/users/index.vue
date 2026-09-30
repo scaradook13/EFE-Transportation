@@ -20,6 +20,7 @@ const showDeleteModal = ref(false)
 const userToDelete = ref<User | null>(null)
 const deleteLoading = ref(false)
 const formError = ref('')
+const showPassword = ref(false)
 
 import { userSchema, userEditSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
@@ -57,6 +58,7 @@ const openCreate = () => {
   resetForm()
   formError.value = ''
   clearErrors()
+  showPassword.value = false
   showModal.value = true
 }
 
@@ -68,6 +70,7 @@ const openEdit = (user: User) => {
   editingUser.value = user
   formError.value = ''
   clearErrors()
+  showPassword.value = false
   Object.assign(form, { username: user.username, password: '', fullName: user.fullName, email: user.email || '', role: user.role, isActive: user.isActive })
   showModal.value = true
 }
@@ -334,7 +337,29 @@ const roleColor = (role: string) => {
               </div>
               <div>
                 <label class="form-label">{{ editingUser ? 'New Password (leave blank to keep)' : 'Password *' }}</label>
-                <input v-model="form.password" @blur="touch('password')" type="password" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.password }" :required="!editingUser" placeholder="Min 8 characters" />
+                <div class="relative">
+                  <input
+                    v-model="form.password"
+                    @blur="touch('password')"
+                    :type="showPassword ? 'text' : 'password'"
+                    class="form-input pr-10"
+                    :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.password }"
+                    :required="!editingUser"
+                    placeholder="Min 8 characters"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1 flex items-center justify-center cursor-pointer"
+                    tabindex="-1"
+                    :title="showPassword ? 'Hide password' : 'Show password'"
+                    @click="showPassword = !showPassword"
+                  >
+                    <UIcon
+                      :name="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                      class="w-4 h-4"
+                    />
+                  </button>
+                </div>
                 <p v-if="errors.password" class="mt-1 text-xs text-red-400">{{ errors.password }}</p>
               </div>
               <div>
