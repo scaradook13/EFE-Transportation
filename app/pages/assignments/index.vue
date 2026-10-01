@@ -63,6 +63,16 @@ watch(() => assignmentStore.activeAssignments.length, (newLength) => {
   }
 })
 
+const completedTodayCount = computed(() => {
+  const todayStr = new Date().toDateString()
+  return assignmentStore.assignments.filter(a => {
+    if (a.status !== 'Completed') return false
+    const dateVal = a.returnedAt || a.timeOut
+    if (!dateVal) return false
+    return new Date(dateVal).toDateString() === todayStr
+  }).length
+})
+
 // --- History Filters ---
 const historyPage = ref(1)
 const statusFilter = ref('')
@@ -334,7 +344,7 @@ const formatDutyTime = (timeIn: string) => {
             <UIcon name="i-heroicons-clock" class="w-5 h-5" style="color: #60a5fa;" />
           </div>
           <div class="text-2xl font-bold text-white">
-            {{ assignmentStore.assignments.filter(a => a.status === 'Completed').length }}
+            {{ completedTodayCount }}
           </div>
           <div class="text-xs text-slate-400 mt-1">Completed Today</div>
         </div>
