@@ -62,17 +62,19 @@ export async function assertFingerprintIsUnique(
     throw createError({
       statusCode: 409,
       statusMessage: 'Conflict',
-      message: 'This fingerprint is already registered in the system.'
+      message: `Duplicate biometrics are prohibited. This fingerprint is already registered to ${exactMatch.type === 'user' ? 'user' : 'driver'} "${exactMatch.name}".`
     })
   }
 
   // 2. Biometric ANSI minutiae feature comparison via DigitalPersona C# bridge engine
   const checkResult = await biometricBridge.checkDuplicate(newTemplate, candidates)
   if (checkResult.isDuplicate) {
+    const matched = checkResult.matchedCandidate || candidates.find(c => c.template === newTemplate)
+    const holderInfo = matched ? ` to ${matched.type === 'user' ? 'user' : 'driver'} "${matched.name}"` : ''
     throw createError({
       statusCode: 409,
       statusMessage: 'Conflict',
-      message: 'This fingerprint is already registered in the system.'
+      message: `Duplicate biometrics are prohibited. This fingerprint is already registered${holderInfo}.`
     })
   }
 }

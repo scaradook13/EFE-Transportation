@@ -124,7 +124,13 @@ const runCaptureLoop = async () => {
   } catch (err: any) {
     if (!isCancelling.value) {
       stepState.value = 'error'
-      errorMessage.value = err?.message || 'Fingerprint capture failed. Please place your finger correctly on the reader.'
+      const status = err?.status || err?.statusCode || err?.response?.status || err?.data?.statusCode
+      const serverMessage = err?.data?.message || err?.response?._data?.message
+      if (status === 409 || (serverMessage && serverMessage.toLowerCase().includes('duplicate'))) {
+        errorMessage.value = serverMessage || 'Duplicate biometrics are prohibited. This fingerprint is already registered in the system.'
+      } else {
+        errorMessage.value = serverMessage || err?.message || 'Fingerprint capture failed. Please place your finger correctly on the reader.'
+      }
     }
   } finally {
     isPolling = false
