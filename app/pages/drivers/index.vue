@@ -556,7 +556,7 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                     </div>
                     <div>
                       <p class="text-sm font-medium" :class="editingDriver.biometric?.enrolled ? 'text-emerald-300' : 'text-amber-300'">
-                        {{ editingDriver.biometric?.enrolled ? `Registered (${editingDriver.biometric.finger || 'Right Index'})` : 'No Biometric Enrolled' }}
+                        {{ editingDriver.biometric?.enrolled ? 'Registered' : 'No Biometric Enrolled' }}
                       </p>
                       <p class="text-xs text-slate-400">
                         {{ editingDriver.biometric?.enrolled ? 'Biometric authentication is active for this driver.' : 'Biometric fingerprint required for shift & dispatch operations.' }}

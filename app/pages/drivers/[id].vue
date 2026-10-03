@@ -206,9 +206,6 @@ const age = computed(() => {
                     Active
                   </span>
                 </div>
-                <p class="text-xs text-slate-400">
-                  Registered Finger: <span class="text-slate-200 font-medium">{{ driver.biometric.finger || 'Right Index' }}</span>
-                </p>
                 <p class="text-xs text-slate-500">
                   Enrolled On: {{ formatDate(driver.biometric.enrolledAt) }}
                 </p>

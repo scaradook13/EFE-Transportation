@@ -202,13 +202,6 @@ const formatDate = (d: string | null) => {
               {{ formatDate(statusData?.enrolledAt) }}
             </p>
           </div>
-
-          <div v-if="statusData?.enrolled">
-            <p class="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Enrolled Finger</p>
-            <p class="text-sm font-semibold text-slate-200">
-              {{ statusData?.finger || 'Right Index' }}
-            </p>
-          </div>
         </div>
 
         <!-- If NOT registered: Warning / Guidance note -->
