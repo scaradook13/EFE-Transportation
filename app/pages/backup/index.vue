@@ -416,7 +416,17 @@ const executeRestore = async () => {
 
     showConfirmModal.value = false
     restoreTarget.value = null
-    await refreshAll()
+
+    // Automatically clean up session and redirect to login to authenticate with restored users
+    toast.add({
+      title: 'Database Restored!',
+      description: 'Database restored successfully. Redirecting to login to verify your credentials...',
+      color: 'success',
+      icon: 'i-heroicons-check-circle'
+    })
+
+    await authStore.logout()
+    await navigateTo('/login')
   } catch (err: any) {
     toast.add({
       title: 'Restore Failed',

@@ -4,6 +4,7 @@ const publicRoutes = [
   '/api/auth/login',
   '/api/auth/biometric-login',
   '/api/auth/refresh',
+  '/api/auth/logout',
   '/api/biometric/reader-status',
   '/api/biometric/authenticate',
   '/api/biometric/cancel',
