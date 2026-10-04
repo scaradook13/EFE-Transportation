@@ -27,7 +27,11 @@ export default defineNuxtConfig({
 
   icon: {
     serverBundle: 'local',
-    provider: 'server'
+    provider: 'server',
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 512
+    }
   },
 
   css: ['~/assets/css/main.css'],
