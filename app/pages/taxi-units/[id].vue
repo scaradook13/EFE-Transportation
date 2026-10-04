@@ -124,10 +124,10 @@ const formatDateOnly = (d: string) => {
 </script>
 
 <template>
-  <div class="p-6 space-y-6 animate-fadeIn">
+  <div class="p-4 sm:p-6 space-y-4 sm:space-y-6 animate-fadeIn">
     <!-- Top Navigation & Breadcrumb -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <NuxtLink
           to="/taxi-units"
           class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 flex items-center gap-1.5 transition-all"
@@ -140,7 +140,7 @@ const formatDateOnly = (d: string) => {
       </div>
 
       <!-- Quick Action Buttons -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 self-end sm:self-auto">
         <button
           class="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
           :disabled="loading"
@@ -162,16 +162,16 @@ const formatDateOnly = (d: string) => {
     </div>
 
     <!-- Taxi Information Header Card -->
-    <div v-if="report" class="glass-card p-5">
+    <div v-if="report" class="glass-card p-4 sm:p-5">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <!-- Left info -->
-        <div class="flex items-start sm:items-center gap-4">
-          <div class="w-14 h-14 rounded-2xl bg-yellow-900/20 border border-yellow-500/20 flex items-center justify-center shrink-0">
-            <UIcon name="i-lucide-car-taxi-front" class="w-7 h-7 text-yellow-400" />
+        <div class="flex items-start sm:items-center gap-3 sm:gap-4">
+          <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-yellow-900/20 border border-yellow-500/20 flex items-center justify-center shrink-0">
+            <UIcon name="i-lucide-car-taxi-front" class="w-6 h-6 sm:w-7 sm:h-7 text-yellow-400" />
           </div>
           <div>
-            <div class="flex flex-wrap items-center gap-2.5">
-              <h1 class="text-2xl font-bold text-white">{{ report.taxi.taxiNumber }}</h1>
+            <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <h1 class="text-xl sm:text-2xl font-bold text-white">{{ report.taxi.taxiNumber }}</h1>
               <span
                 :class="[
                   'px-2.5 py-0.5 rounded-full text-xs font-semibold border',
@@ -186,7 +186,7 @@ const formatDateOnly = (d: string) => {
                 Status: {{ report.taxi.status }}
               </span>
             </div>
-            <p class="text-slate-400 text-sm mt-1 flex flex-wrap items-center gap-2">
+            <p class="text-slate-400 text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-2">
               <span class="font-mono text-slate-200 uppercase font-semibold">{{ report.taxi.plateNumber }}</span>
               <span>•</span>
               <span>{{ report.taxi.brand }} {{ report.taxi.model }} ({{ report.taxi.year }})</span>
@@ -244,14 +244,14 @@ const formatDateOnly = (d: string) => {
     </div>
 
     <!-- Time Period Selector & Date Navigation Bar -->
-    <div class="glass-card p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+    <div class="glass-card p-3.5 sm:p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
       <!-- Period Tabs -->
-      <div class="inline-flex p-1 rounded-xl bg-slate-950/40 border border-white/5 self-start md:self-auto">
+      <div class="grid grid-cols-4 sm:inline-flex p-1 rounded-xl bg-slate-950/40 border border-white/5 w-full md:w-auto">
         <button
           v-for="p in (['daily', 'weekly', 'monthly', 'yearly'] as const)"
           :key="p"
           :class="[
-            'px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all',
+            'px-2 sm:px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all text-center',
             period === p
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
               : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
@@ -263,33 +263,33 @@ const formatDateOnly = (d: string) => {
       </div>
 
       <!-- Date Navigator -->
-      <div v-if="report" class="flex items-center justify-between md:justify-end gap-2 sm:gap-3">
+      <div v-if="report" class="flex items-center justify-between md:justify-end gap-1.5 sm:gap-2 w-full md:w-auto">
         <button
-          class="btn-secondary px-2.5 py-1.5 text-xs flex items-center gap-1"
+          class="btn-secondary px-2 sm:px-2.5 py-1.5 text-xs flex items-center justify-center gap-1 shrink-0"
           title="Previous Period"
           @click="navigatePrev"
         >
-          <UIcon name="i-heroicons-chevron-left" class="w-4 h-4" />
+          <UIcon name="i-heroicons-chevron-left" class="w-4 h-4 shrink-0" />
           <span class="hidden sm:inline">Previous</span>
         </button>
 
-        <div class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-center min-w-[170px] sm:min-w-[220px]">
-          <span class="text-xs sm:text-sm font-semibold text-white">
+        <div class="px-2 sm:px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-center flex-1 md:flex-initial min-w-0 sm:min-w-[180px]">
+          <span class="text-xs sm:text-sm font-semibold text-white truncate block">
             {{ report.dateRange.displayLabel }}
           </span>
         </div>
 
         <button
-          class="btn-secondary px-2.5 py-1.5 text-xs flex items-center gap-1"
+          class="btn-secondary px-2 sm:px-2.5 py-1.5 text-xs flex items-center justify-center gap-1 shrink-0"
           title="Next Period"
           @click="navigateNext"
         >
           <span class="hidden sm:inline">Next</span>
-          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4" />
+          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 shrink-0" />
         </button>
 
         <button
-          class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-colors"
+          class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-colors shrink-0 whitespace-nowrap"
           title="Jump to Current Period"
           @click="resetToCurrent"
         >
@@ -299,7 +299,7 @@ const formatDateOnly = (d: string) => {
     </div>
 
     <!-- Summary KPI Cards -->
-    <div v-if="report" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div v-if="report" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div class="stat-card">
         <div class="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style="background: rgba(249,168,37,0.12);">
           <UIcon name="i-heroicons-banknotes" class="w-5 h-5 text-amber-400" />
@@ -346,8 +346,8 @@ const formatDateOnly = (d: string) => {
     </div>
 
     <!-- Visual Chart Component -->
-    <div v-if="report && report.breakdown.length" class="glass-card p-5">
-      <div class="flex items-center justify-between mb-5">
+    <div v-if="report && report.breakdown.length" class="glass-card p-4 sm:p-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
         <div>
           <h2 class="text-base font-semibold text-white capitalize">{{ period }} Boundary Breakdown</h2>
           <p class="text-xs text-slate-500 mt-0.5">Visual distribution of boundary amounts across {{ report.dateRange.displayLabel }}</p>
