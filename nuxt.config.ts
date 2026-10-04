@@ -14,6 +14,22 @@ export default defineNuxtConfig({
     enabled: false
   },
 
+  fonts: {
+    providers: {
+      google: false,
+      googleicons: false,
+      bunny: false,
+      fontshare: false,
+      fontsource: false,
+      adobe: false
+    }
+  },
+
+  icon: {
+    serverBundle: 'local',
+    provider: 'server'
+  },
+
   css: ['~/assets/css/main.css'],
 
   app: {
