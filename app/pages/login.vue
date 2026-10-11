@@ -183,7 +183,7 @@ const handleLogin = async () => {
           @click="startBiometricLogin"
         >
           <UIcon name="i-heroicons-finger-print" class="w-5 h-5 text-emerald-400" />
-          <span>{{ form.username ? `Sign In as "${form.username}" with Fingerprint` : 'Sign In with Fingerprint' }}</span>
+          <span>Sign In with Fingerprint</span>
         </button>
 
         <!-- Reader Connection Status -->
