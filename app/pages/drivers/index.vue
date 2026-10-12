@@ -217,6 +217,32 @@ const isLicenseExpiringSoon = (d: string) => {
   return diff <= 60 && diff >= 0
 }
 const isLicenseExpired = (d: string) => new Date(d) < new Date()
+
+const getActionsMenu = (driver: Driver) => [
+  [
+    {
+      label: 'Edit Profile',
+      icon: 'i-heroicons-pencil-square',
+      disabled: (driver as any).operationalStatus === 'Active',
+      onClick: () => openEdit(driver),
+      onSelect: () => openEdit(driver)
+    },
+    {
+      label: driver.biometric?.enrolled ? 'Re-enroll Biometric' : 'Enroll Biometric',
+      icon: 'i-heroicons-finger-print',
+      onClick: () => openEnrollDriver(driver, !!driver.biometric?.enrolled),
+      onSelect: () => openEnrollDriver(driver, !!driver.biometric?.enrolled)
+    },
+    {
+      label: 'Delete Driver',
+      icon: 'i-heroicons-trash',
+      color: 'error' as const,
+      disabled: (driver as any).operationalStatus === 'Active',
+      onClick: () => confirmDelete(driver),
+      onSelect: () => confirmDelete(driver)
+    }
+  ]
+]
 </script>
 
 <template>
@@ -266,22 +292,22 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Driver</th>
-                  <th>Driver ID</th>
-                  <th>Contact</th>
-                  <th>License No.</th>
-                  <th>License Exp.</th>
-                  <th>Biometric</th>
-                  <th>Duty Status</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th class="text-left">Driver</th>
+                  <th class="text-center">Driver ID</th>
+                  <th class="text-center">Contact</th>
+                  <th class="text-center">License No.</th>
+                  <th class="text-center">License Exp.</th>
+                  <th class="text-center">Biometric</th>
+                  <th class="text-center">Duty Status</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="driver in driverStore.drivers" :key="driver._id">
-                  <td>
+                <tr v-for="driver in driverStore.drivers" :key="driver._id" class="transition-colors hover:bg-white/[0.02]">
+                  <td class="text-left">
                     <div class="flex items-center gap-3">
-                      <div v-if="driver.photo" class="w-9 h-9 rounded-full overflow-hidden shrink-0">
+                      <div v-if="driver.photo" class="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-white/10">
                         <img :src="driver.photo" :alt="driver.fullName" class="w-full h-full object-cover" />
                       </div>
                       <div v-else class="w-9 h-9 rounded-full bg-green-900/30 border border-green-500/20 flex items-center justify-center shrink-0">
@@ -291,49 +317,47 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                         <NuxtLink :to="`/drivers/${driver._id}`" class="text-white font-medium hover:text-green-400 transition-colors">
                           {{ driver.fullName }}
                         </NuxtLink>
-                        <p class="text-xs text-slate-500">{{ driver.address.substring(0, 30) }}...</p>
+                        <p class="text-xs text-slate-500">{{ driver.address ? (driver.address.substring(0, 30) + (driver.address.length > 30 ? '...' : '')) : '' }}</p>
                       </div>
                     </div>
                   </td>
-                  <td><span class="font-mono text-xs text-slate-300">{{ driver.driverId }}</span></td>
-                  <td class="text-slate-300">{{ driver.contactNumber }}</td>
-                  <td class="font-mono text-xs text-slate-300">{{ driver.licenseNumber }}</td>
-                  <td>
-                    <div class="flex items-center gap-1.5">
+                  <td class="text-center"><span class="font-mono text-xs text-slate-300">{{ driver.driverId }}</span></td>
+                  <td class="text-center"><span class="text-slate-300 text-sm">{{ driver.contactNumber }}</span></td>
+                  <td class="text-center"><span class="font-mono text-xs text-slate-300 uppercase">{{ driver.licenseNumber }}</span></td>
+                  <td class="text-center">
+                    <div class="inline-flex items-center justify-center gap-1.5">
                       <span :class="[
                         'text-xs',
-                        isLicenseExpired(driver.licenseExpiration) ? 'text-red-400' :
-                        isLicenseExpiringSoon(driver.licenseExpiration) ? 'text-yellow-400' : 'text-slate-400'
+                        isLicenseExpired(driver.licenseExpiration) ? 'text-red-400 font-medium' :
+                        isLicenseExpiringSoon(driver.licenseExpiration) ? 'text-yellow-400 font-medium' : 'text-slate-300'
                       ]">{{ formatDate(driver.licenseExpiration) }}</span>
                       <UIcon v-if="isLicenseExpired(driver.licenseExpiration)" name="i-heroicons-exclamation-circle" class="w-3.5 h-3.5 text-red-400" />
                       <UIcon v-else-if="isLicenseExpiringSoon(driver.licenseExpiration)" name="i-heroicons-clock" class="w-3.5 h-3.5 text-yellow-400" />
                     </div>
                   </td>
-                  <td>
-                    <div class="flex items-center gap-1.5">
+                  <td class="text-center">
+                    <div class="flex items-center justify-center">
                       <span
                         v-if="driver.biometric?.enrolled"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
                         :title="`Enrolled: ${driver.biometric.finger || 'Right Index'}`"
                       >
                         <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 text-emerald-400" />
                         Registered
                       </span>
-                      <button
+                      <span
                         v-else
-                        type="button"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/25 hover:bg-amber-500/20 transition-colors"
-                        @click="openEnrollDriver(driver, false)"
-                        title="Click to enroll driver fingerprint"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20"
+                        title="Biometric not yet registered"
                       >
-                        <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 text-amber-400" />
-                        Enroll
-                      </button>
+                        <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 opacity-60" />
+                        Unregistered
+                      </span>
                     </div>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <span :class="[
-                      'px-2 py-0.5 rounded-full text-xs font-medium',
+                      'inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium',
                       (driver as any).operationalStatus === 'Active' ? 'badge-active' :
                       (driver as any).operationalStatus === 'Not Available' ? 'badge-cancelled' : 'badge-available'
                     ]">
@@ -341,37 +365,40 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
                          (driver as any).operationalStatus === 'Not Available' ? 'Not Available' : 'Available' }}
                     </span>
                   </td>
-                  <td>
-                    <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', 
+                  <td class="text-center">
+                    <span :class="['inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium', 
                       driver.employmentStatus === 'Active' ? 'badge-completed' : 
                       driver.employmentStatus === 'Expired License' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'badge-cancelled']">
                       {{ driver.employmentStatus }}
                     </span>
                   </td>
-                  <td>
-                    <div class="flex items-center gap-2">
-                      <NuxtLink :to="`/drivers/${driver._id}`" class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="View Profile">
-                        <UIcon name="i-heroicons-eye" class="w-4 h-4 text-slate-400" />
-                      </NuxtLink>
-                      <button
-                        v-if="authStore.canManageDrivers"
-                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                        :class="driver.biometric?.enrolled ? 'text-emerald-400' : 'text-amber-400'"
-                        :title="driver.biometric?.enrolled ? 'Re-enroll Biometric' : 'Enroll Biometric'"
-                        @click="openEnrollDriver(driver, !!driver.biometric?.enrolled)"
+                  <td class="text-center">
+                    <div class="flex items-center justify-center gap-2">
+                      <NuxtLink
+                        :to="`/drivers/${driver._id}`"
+                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
+                        title="View Profile"
                       >
-                        <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
-                      </button>
-                      <div v-if="authStore.canManageDrivers" :title="(driver as any).operationalStatus === 'Active' ? 'This driver is currently on duty and cannot be edited until the assigned taxi has been returned.' : undefined">
-                        <button class="p-1.5 rounded-lg transition-colors" :class="(driver as any).operationalStatus === 'Active' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="(driver as any).operationalStatus === 'Active'" @click="openEdit(driver)">
-                          <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
-                        </button>
-                      </div>
-                      <div v-if="authStore.canManageDrivers" :title="(driver as any).operationalStatus === 'Active' ? 'This driver is currently on duty and cannot be deleted.' : undefined">
-                        <button class="p-1.5 rounded-lg transition-colors" :class="(driver as any).operationalStatus === 'Active' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="(driver as any).operationalStatus === 'Active'" @click="confirmDelete(driver)">
-                          <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
-                        </button>
-                      </div>
+                        <UIcon name="i-heroicons-eye" class="w-4 h-4" />
+                      </NuxtLink>
+
+                      <template v-if="authStore.canManageDrivers">
+                        <UDropdownMenu
+                          :modal="false"
+                          :items="getActionsMenu(driver)"
+                          :content="{ align: 'end' }"
+                          :ui="{ content: 'min-w-[190px] p-2 space-y-1', item: 'py-2.5 px-3 gap-3 text-xs rounded-lg' }"
+                          size="sm"
+                        >
+                          <button
+                            class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
+                            title="More options"
+                            @click.stop
+                          >
+                            <UIcon name="i-heroicons-ellipsis-vertical" class="w-4 h-4" />
+                          </button>
+                        </UDropdownMenu>
+                      </template>
                     </div>
                   </td>
                 </tr>

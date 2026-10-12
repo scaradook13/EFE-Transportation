@@ -186,6 +186,13 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.data-table th.text-left,
+.data-table th[class*="text-left"],
+.data-table td.text-left,
+.data-table td[class*="text-left"] {
+  text-align: left !important;
+}
+
 .data-table th.text-center,
 .data-table th[class*="text-center"],
 .data-table td.text-center,
