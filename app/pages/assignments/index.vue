@@ -707,8 +707,21 @@ const formatDutyTime = (timeIn: string) => {
             </div>
 
             <div class="flex gap-3 mt-6">
-              <button class="btn-secondary flex-1" @click="showIssueModal = false">Cancel</button>
-              <button class="btn-primary flex-1" :disabled="issuingTaxi || !issueForm.driverId || !issueForm.taxiUnitId" @click="handleIssue">
+              <button
+                type="button"
+                class="btn-primary justify-center hover:brightness-110 transition-all"
+                style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                @click="showIssueModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn-primary justify-center whitespace-nowrap"
+                style="flex: 3;"
+                :disabled="issuingTaxi || !issueForm.driverId || !issueForm.taxiUnitId"
+                @click="handleIssue"
+              >
                 <UIcon v-if="issuingTaxi" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
                 <UIcon v-else name="i-heroicons-check" class="w-4 h-4" />
                 {{ issuingTaxi ? 'Issuing...' : 'Issue Taxi' }}
