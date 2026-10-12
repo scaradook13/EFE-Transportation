@@ -191,10 +191,7 @@ const getTaxiColorHex = (colorName: string) => {
                   @click="authStore.canViewBoundaryReports ? navigateTo(`/taxi-units/${unit._id}`) : null"
                 >
                   <td>
-                    <span
-                      class="font-bold text-white transition-colors flex items-center gap-1.5"
-                      :class="authStore.canViewBoundaryReports ? 'group-hover:text-yellow-400' : ''"
-                    >
+                    <span class="font-bold text-white flex items-center gap-1.5">
                       {{ unit.taxiNumber }}
                       <UIcon
                         v-if="authStore.canViewBoundaryReports"
