@@ -18,6 +18,9 @@ export default defineEventHandler(async (event) => {
     finger: 'Right Index',
     enrolledAt: null
   }
+  if (driver.operationalStatus !== 'Active') {
+    driver.operationalStatus = 'Not Available'
+  }
   driver.updatedBy = authUser.userId as any
 
   await driver.save()

@@ -353,10 +353,10 @@ const getActionsMenu = (driver: Driver) => [
                     <span :class="[
                       'inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium',
                       (driver as any).operationalStatus === 'Active' ? 'badge-active' :
-                      (driver as any).operationalStatus === 'Not Available' ? 'badge-cancelled' : 'badge-available'
+                      (driver as any).operationalStatus === 'Not Available' || !driver.biometric?.enrolled ? 'badge-cancelled' : 'badge-available'
                     ]">
                       {{ (driver as any).operationalStatus === 'Active' ? 'On Duty' : 
-                         (driver as any).operationalStatus === 'Not Available' ? 'Not Available' : 'Available' }}
+                         ((driver as any).operationalStatus === 'Not Available' || !driver.biometric?.enrolled) ? 'Not Available' : 'Available' }}
                     </span>
                   </td>
                   <td class="text-center">

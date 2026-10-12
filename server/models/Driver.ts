@@ -149,7 +149,7 @@ const DriverSchema = new Schema<IDriver>(
         values: ['Available', 'Active', 'Not Available'],
         message: '{VALUE} is not a valid operational status'
       },
-      default: 'Available',
+      default: 'Not Available',
       required: true,
       index: true
     },

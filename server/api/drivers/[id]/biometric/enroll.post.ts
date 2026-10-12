@@ -38,6 +38,13 @@ export default defineEventHandler(async (event) => {
     }
     driver.updatedBy = authUser.userId as any
 
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const isLicenseExpired = driver.licenseExpiration && new Date(driver.licenseExpiration) < today
+    if (driver.employmentStatus === 'Active' && !isLicenseExpired && driver.operationalStatus !== 'Active') {
+      driver.operationalStatus = 'Available'
+    }
+
     await driver.save()
 
     const action = wasEnrolled ? 'DRIVER_BIOMETRIC_RE_ENROLLED' : 'DRIVER_BIOMETRIC_ENROLLED'

@@ -15,6 +15,18 @@ export const driverService = {
       { $set: { employmentStatus: 'Expired License', operationalStatus: 'Not Available' } }
     )
 
+    // Auto-validate biometrics (Only drivers with enrolled biometric can be Available)
+    await Driver.updateMany(
+      {
+        $or: [
+          { 'biometric.enrolled': { $ne: true } },
+          { biometric: { $exists: false } }
+        ],
+        operationalStatus: 'Available'
+      },
+      { $set: { operationalStatus: 'Not Available' } }
+    )
+
     return driverRepository.findAll(filters, page, limit)
   },
 
@@ -39,6 +51,14 @@ export const driverService = {
         data.operationalStatus = 'Not Available'
       }
     }
+
+    // Drivers without enrolled biometric cannot be Available
+    if (!data.biometric?.enrolled) {
+      data.operationalStatus = 'Not Available'
+    } else if (!data.operationalStatus && data.employmentStatus === 'Active') {
+      data.operationalStatus = 'Available'
+    }
+
     return driverRepository.create(data)
   },
 
@@ -49,10 +69,12 @@ export const driverService = {
       throw createError({ statusCode: 404, message: 'Driver not found' })
     }
     
+    const isBiometricEnrolled = data.biometric?.enrolled ?? existingDriver.biometric?.enrolled
+
     if (data.employmentStatus === 'Active') {
       // Check if driver has no active assignment
       if (existingDriver.operationalStatus !== 'Active') {
-        data.operationalStatus = 'Available'
+        data.operationalStatus = isBiometricEnrolled ? 'Available' : 'Not Available'
       }
     } else if (data.employmentStatus === 'Inactive' || data.employmentStatus === 'Expired License') {
       data.operationalStatus = 'Not Available'
@@ -63,6 +85,10 @@ export const driverService = {
         data.employmentStatus = 'Expired License'
         data.operationalStatus = 'Not Available'
       }
+    }
+
+    if (!isBiometricEnrolled && existingDriver.operationalStatus !== 'Active') {
+      data.operationalStatus = 'Not Available'
     }
     
     const driver = await driverRepository.update(id, data)
@@ -89,6 +115,17 @@ export const driverService = {
     await Driver.updateMany(
       { licenseExpiration: { $lt: today }, employmentStatus: { $ne: 'Expired License' } },
       { $set: { employmentStatus: 'Expired License', operationalStatus: 'Not Available' } }
+    )
+
+    await Driver.updateMany(
+      {
+        $or: [
+          { 'biometric.enrolled': { $ne: true } },
+          { biometric: { $exists: false } }
+        ],
+        operationalStatus: 'Available'
+      },
+      { $set: { operationalStatus: 'Not Available' } }
     )
 
     return driverRepository.findActive()

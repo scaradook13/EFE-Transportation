@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
         authUser.userId, 
         'Driver Employment Status Updated', 
         'Drivers', 
-        `Employment Status: ${oldEmploymentStatus} → Active | Duty Status: ${oldOpStatus} → Available (Automatic)`
+        `Employment Status: ${oldEmploymentStatus} → Active | Duty Status: ${oldOpStatus} → ${driver?.operationalStatus} (Automatic)`
       )
     } else {
       logAudit(event, authUser.userId, 'UPDATE_DRIVER', 'Drivers', `Updated driver: ${driver?.fullName}`)

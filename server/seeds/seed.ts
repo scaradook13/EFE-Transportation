@@ -67,7 +67,7 @@ async function seed() {
     licenseExpiration: { type: Date, required: true },
     photo: { type: String, default: null },
     employmentStatus: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
-    operationalStatus: { type: String, enum: ['Available', 'Active'], default: 'Available' },
+    operationalStatus: { type: String, enum: ['Available', 'Active', 'Not Available'], default: 'Not Available' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
   }, { timestamps: true })
@@ -86,7 +86,7 @@ async function seed() {
       licenseNumber: 'N01-23-456789',
       licenseExpiration: new Date('2026-03-15'),
       employmentStatus: 'Active',
-      operationalStatus: 'Available',
+      operationalStatus: 'Not Available',
       createdBy: adminUser._id
     },
     {
@@ -99,7 +99,7 @@ async function seed() {
       licenseNumber: 'N01-23-987654',
       licenseExpiration: new Date('2025-07-22'),
       employmentStatus: 'Active',
-      operationalStatus: 'Available',
+      operationalStatus: 'Not Available',
       createdBy: adminUser._id
     },
     {
@@ -112,7 +112,7 @@ async function seed() {
       licenseNumber: 'N01-23-111222',
       licenseExpiration: new Date('2027-11-10'),
       employmentStatus: 'Active',
-      operationalStatus: 'Available',
+      operationalStatus: 'Not Available',
       createdBy: adminUser._id
     },
     {
@@ -125,7 +125,7 @@ async function seed() {
       licenseNumber: 'N01-23-555666',
       licenseExpiration: new Date('2026-09-18'),
       employmentStatus: 'Active',
-      operationalStatus: 'Available',
+      operationalStatus: 'Not Available',
       createdBy: adminUser._id
     }
   ]

@@ -1,4 +1,4 @@
-import { Driver, type IDriver, type EmploymentStatus, type OperationalStatus } from '~~/server/models/Driver'
+import { Driver, type IDriver, type EmploymentStatus, type OperationalStatus, type IDriverBiometric } from '~~/server/models/Driver'
 import type { FilterQuery } from 'mongoose'
 import mongoose from 'mongoose'
 
@@ -23,6 +23,7 @@ export interface CreateDriverDto {
   dateHired?: Date | string | null
   employmentStatus?: EmploymentStatus
   operationalStatus?: OperationalStatus
+  biometric?: IDriverBiometric
   createdBy: string
 }
 
@@ -47,12 +48,13 @@ export interface UpdateDriverDto {
   dateHired?: Date | string | null
   employmentStatus?: EmploymentStatus
   operationalStatus?: OperationalStatus
+  biometric?: IDriverBiometric
   updatedBy?: string
 }
 
 export interface DriverFilters {
   employmentStatus?: EmploymentStatus
-  operationalStatus?: 'Available' | 'Active'
+  operationalStatus?: 'Available' | 'Active' | 'Not Available'
   search?: string
 }
 
@@ -61,7 +63,12 @@ export const driverRepository = {
     const query: FilterQuery<IDriver> = {}
 
     if (filters.employmentStatus) query.employmentStatus = filters.employmentStatus
-    if (filters.operationalStatus) query.operationalStatus = filters.operationalStatus
+    if (filters.operationalStatus === 'Available') {
+      query.operationalStatus = 'Available'
+      query['biometric.enrolled'] = true
+    } else if (filters.operationalStatus) {
+      query.operationalStatus = filters.operationalStatus
+    }
     if (filters.search) {
       const sanitized = escapeRegex(filters.search.trim())
       query.$or = [

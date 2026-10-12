@@ -21,12 +21,12 @@ export const assignmentService = {
   async issue(dto: IssueDto) {
     // 1. Atomically lock Driver
     const driver = await Driver.findOneAndUpdate(
-      { _id: dto.driverId, employmentStatus: 'Active', operationalStatus: 'Available' },
+      { _id: dto.driverId, employmentStatus: 'Active', operationalStatus: 'Available', 'biometric.enrolled': true },
       { operationalStatus: 'Active' },
       { new: true }
     )
     if (!driver) {
-      throw createError({ statusCode: 409, message: 'Driver is not available, inactive, or already on duty' })
+      throw createError({ statusCode: 409, message: 'Driver is not available, inactive, un-enrolled, or already on duty' })
     }
 
     // 2. Atomically lock Taxi
@@ -113,8 +113,16 @@ export const assignmentService = {
     }
 
     // 3. Reset driver and taxi status
+    const finishedDriver = await Driver.findById(driverId)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const isAvailable = finishedDriver?.employmentStatus === 'Active'
+      && finishedDriver?.biometric?.enrolled === true
+      && finishedDriver?.licenseExpiration
+      && new Date(finishedDriver.licenseExpiration) >= today
+
     await Promise.all([
-      Driver.findByIdAndUpdate(driverId, { operationalStatus: 'Available' }),
+      Driver.findByIdAndUpdate(driverId, { operationalStatus: isAvailable ? 'Available' : 'Not Available' }),
       TaxiUnit.findByIdAndUpdate(taxiId, { status: 'Available' })
     ])
 
@@ -136,6 +144,26 @@ export const assignmentService = {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
 
+    // Auto-validate status for accuracy
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    await Promise.all([
+      Driver.updateMany(
+        { licenseExpiration: { $lt: today }, employmentStatus: { $ne: 'Expired License' } },
+        { $set: { employmentStatus: 'Expired License', operationalStatus: 'Not Available' } }
+      ),
+      Driver.updateMany(
+        {
+          $or: [
+            { 'biometric.enrolled': { $ne: true } },
+            { biometric: { $exists: false } }
+          ],
+          operationalStatus: 'Available'
+        },
+        { $set: { operationalStatus: 'Not Available' } }
+      )
+    ])
+
     const [
       availableDrivers,
       activeDrivers,
@@ -146,7 +174,7 @@ export const assignmentService = {
       todayReturned,
       avgHoursResult
     ] = await Promise.all([
-      Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Available' }),
+      Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Available', 'biometric.enrolled': true }),
       Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Active' }),
       TaxiUnit.countDocuments({ status: 'Available' }),
       TaxiUnit.countDocuments({ status: 'In Use' }),
