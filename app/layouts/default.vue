@@ -115,14 +115,6 @@ const logout = async () => {
             </div>
             <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
           </NuxtLink>
-
-          <button
-            class="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-            title="Logout"
-            @click="logout"
-          >
-            <UIcon name="i-heroicons-arrow-right-on-rectangle" class="w-5 h-5" />
-          </button>
         </div>
       </header>
 
