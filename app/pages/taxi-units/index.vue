@@ -266,7 +266,7 @@ const getTaxiColorHex = (colorName: string) => {
                     <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusClass(unit.status)]">{{ unit.status }}</span>
                   </td>
                   <td>
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-2.5">
                       <button
                         v-if="authStore.canViewBoundaryReports"
                         class="p-1.5 rounded-lg transition-colors hover:bg-emerald-500/10 text-emerald-400"
@@ -286,7 +286,8 @@ const getTaxiColorHex = (colorName: string) => {
                           <UDropdownMenu
                             :items="getActionsMenu(unit)"
                             :content="{ align: 'end' }"
-                            size="xs"
+                            :ui="{ content: 'min-w-[190px] p-2 space-y-1', item: 'py-2.5 px-3 gap-3 text-xs rounded-lg' }"
+                            size="sm"
                           >
                             <button
                               class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
