@@ -131,6 +131,24 @@ const statusClass = (status: string) => {
   return 'badge-maintenance'
 }
 
+const getActionsMenu = (unit: TaxiUnit) => [
+  [
+    {
+      label: unit.status === 'Maintenance' ? 'Mark as Available' : 'Set to Maintenance',
+      icon: 'i-heroicons-wrench-screwdriver',
+      disabled: unit.status === 'In Use',
+      onSelect: () => toggleStatus(unit)
+    },
+    {
+      label: 'Delete Unit',
+      icon: 'i-heroicons-trash',
+      color: 'error' as const,
+      disabled: unit.status === 'In Use',
+      onSelect: () => confirmDelete(unit)
+    }
+  ]
+]
+
 const getTaxiColorHex = (colorName: string) => {
   const normalized = (colorName || '').toLowerCase().trim();
   switch (normalized) {
@@ -259,25 +277,24 @@ const getTaxiColorHex = (colorName: string) => {
                       </button>
 
                       <template v-if="authStore.canManageTaxis">
-                        <div :title="unit.status === 'In Use' ? 'This taxi is currently in use and cannot be changed.' : (unit.status === 'Maintenance' ? 'Mark as Available' : 'Set to Maintenance')">
-                          <button
-                            class="p-1.5 rounded-lg transition-colors"
-                            :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : (unit.status === 'Maintenance' ? 'text-amber-400 hover:bg-emerald-500/10 hover:text-emerald-400' : 'text-slate-400 hover:text-amber-400 hover:bg-white/5')"
-                            :disabled="unit.status === 'In Use'"
-                            @click.stop="toggleStatus(unit)"
-                          >
-                            <UIcon name="i-heroicons-wrench-screwdriver" class="w-4 h-4" />
-                          </button>
-                        </div>
                         <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be edited until it has been returned.' : undefined">
-                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5 text-blue-400'" :disabled="unit.status === 'In Use'" @click.stop="openEdit(unit)">
+                          <button class="p-1.5 rounded-lg transition-colors hover:bg-white/5 text-blue-400" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : ''" :disabled="unit.status === 'In Use'" @click.stop="openEdit(unit)">
                             <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
                           </button>
                         </div>
-                        <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be deleted.' : undefined">
-                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10 text-red-400'" :disabled="unit.status === 'In Use'" @click.stop="confirmDelete(unit)">
-                            <UIcon name="i-heroicons-trash" class="w-4 h-4" />
-                          </button>
+                        <div @click.stop>
+                          <UDropdownMenu
+                            :items="getActionsMenu(unit)"
+                            :content="{ align: 'end' }"
+                            size="xs"
+                          >
+                            <button
+                              class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
+                              title="More options"
+                            >
+                              <UIcon name="i-heroicons-ellipsis-vertical" class="w-4 h-4" />
+                            </button>
+                          </UDropdownMenu>
                         </div>
                       </template>
                     </div>
