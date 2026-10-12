@@ -10,11 +10,21 @@ if (!authStore.isAdmin) {
   router.push('/')
 }
 
+interface UserOption {
+  _id: string
+  fullName: string
+  username: string
+  role?: string
+}
+
 const logs = ref([])
 const loading = ref(false)
 const page = ref(1)
 const pagination = ref<{ total: number; page: number; limit: number; pages: number } | null>(null)
 const moduleFilter = ref('')
+const userFilter = ref('')
+const usersList = ref<UserOption[]>([])
+const loadingUsers = ref(false)
 const dateFrom = ref('')
 const dateTo = ref('')
 const search = ref('')
@@ -23,7 +33,8 @@ const moduleOptions = [
   { value: 'Auth', label: 'Login & Security' },
   { value: 'Drivers', label: 'Drivers' },
   { value: 'Taxi Units', label: 'Taxi Units' },
-  { value: 'Taxi Assignment', label: 'Taxi Assignment' }
+  { value: 'Taxi Assignment', label: 'Taxi Assignment' },
+  { value: 'User', label: 'User' }
 ]
 
 const formatModuleName = (mod: string) => {
@@ -31,11 +42,28 @@ const formatModuleName = (mod: string) => {
   return mod
 }
 
+const loadUsersList = async () => {
+  if (usersList.value.length > 0) return
+  loadingUsers.value = true
+  try {
+    const res = await $fetch<{ data: UserOption[] }>('/api/users', { query: { limit: 100 } })
+    usersList.value = res.data || []
+  } catch (err) {
+    console.error('Failed to load users list:', err)
+  } finally {
+    loadingUsers.value = false
+  }
+}
+
 const loadLogs = async () => {
   loading.value = true
   try {
     const params: Record<string, string | number> = { page: page.value, limit: 20 }
-    if (moduleFilter.value) params.module = moduleFilter.value
+    if (moduleFilter.value === 'User') {
+      if (userFilter.value) params.user = userFilter.value
+    } else if (moduleFilter.value) {
+      params.module = moduleFilter.value
+    }
     if (dateFrom.value) params.dateFrom = dateFrom.value
     if (dateTo.value) params.dateTo = dateTo.value
     if (search.value) params.search = search.value
@@ -54,8 +82,22 @@ const loadLogs = async () => {
   }
 }
 
-onMounted(loadLogs)
-watch([moduleFilter, dateFrom, dateTo], () => { page.value = 1; loadLogs() })
+onMounted(() => {
+  loadLogs()
+  loadUsersList()
+})
+
+watch(moduleFilter, (newVal) => {
+  page.value = 1
+  if (newVal === 'User') {
+    loadUsersList()
+  } else {
+    userFilter.value = ''
+  }
+  loadLogs()
+})
+
+watch([userFilter, dateFrom, dateTo], () => { page.value = 1; loadLogs() })
 watch(search, useDebounceFn(() => { page.value = 1; loadLogs() }, 300))
 watch(page, loadLogs)
 
@@ -94,12 +136,24 @@ const actionColor = (action: string) => {
           <option value="">All Modules</option>
           <option v-for="m in moduleOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
         </select>
+
+        <select
+          v-if="moduleFilter === 'User'"
+          v-model="userFilter"
+          class="form-input filter-dropdown w-64 animate-fadeIn"
+        >
+          <option value="">All Users</option>
+          <option v-for="u in usersList" :key="u._id" :value="u._id">
+            {{ u.fullName }} ({{ u.username }})
+          </option>
+        </select>
+
         <div class="flex items-center gap-2">
           <input v-model="dateFrom" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="From date" />
           <span class="text-slate-500 text-sm">to</span>
           <input v-model="dateTo" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="To date" />
         </div>
-        <button class="btn-secondary px-3 py-2 text-xs" @click="() => { search = ''; moduleFilter = ''; dateFrom = ''; dateTo = ''; loadLogs() }">
+        <button class="btn-secondary px-3 py-2 text-xs" @click="() => { search = ''; moduleFilter = ''; userFilter = ''; dateFrom = ''; dateTo = ''; loadLogs() }">
           <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" /> Clear
         </button>
       </div>
