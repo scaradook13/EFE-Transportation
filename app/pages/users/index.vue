@@ -189,6 +189,52 @@ const roleColor = (role: string) => {
   if (role === 'hr') return 'text-blue-400 bg-blue-500/10 border-blue-500/20'
   return 'text-green-400 bg-green-500/10 border-green-500/20'
 }
+
+const getActionsMenu = (user: User) => {
+  const isSelf = user._id === authStore.user?.userId
+  const isProtectedAdmin = user.isPrimaryAdmin && !isSelf
+
+  const items: any[] = [
+    {
+      label: 'Edit User',
+      icon: 'i-heroicons-pencil-square',
+      disabled: isProtectedAdmin,
+      onClick: () => openEdit(user),
+      onSelect: () => openEdit(user)
+    }
+  ]
+
+  if (!user.isPrimaryAdmin && !isSelf) {
+    items.push({
+      label: user.isActive ? 'Deactivate User' : 'Activate User',
+      icon: user.isActive ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      onClick: () => toggleActive(user),
+      onSelect: () => toggleActive(user)
+    })
+  }
+
+  if (user.biometric?.enrolled && !isProtectedAdmin) {
+    items.push({
+      label: 'Remove Fingerprint',
+      icon: 'i-heroicons-x-mark',
+      color: 'warning' as const,
+      onClick: () => confirmRemoveBio(user),
+      onSelect: () => confirmRemoveBio(user)
+    })
+  }
+
+  if (!user.isPrimaryAdmin && !isSelf) {
+    items.push({
+      label: 'Delete User',
+      icon: 'i-heroicons-trash',
+      color: 'error' as const,
+      onClick: () => confirmDelete(user),
+      onSelect: () => confirmDelete(user)
+    })
+  }
+
+  return [items]
+}
 </script>
 
 <template>
@@ -216,21 +262,21 @@ const roleColor = (role: string) => {
           <table class="data-table">
             <thead>
               <tr>
-                <th>User</th>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Biometric</th>
-                <th>Status</th>
-                <th>Joined</th>
-                <th>Actions</th>
+                <th class="text-left">User</th>
+                <th class="text-center">Username</th>
+                <th class="text-center">Role</th>
+                <th class="text-center">Biometric</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Joined</th>
+                <th class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in users" :key="user._id">
-                <td>
+              <tr v-for="user in users" :key="user._id" class="transition-colors hover:bg-white/[0.02]">
+                <td class="text-left">
                   <div class="flex items-center gap-3">
                     <div
-                      class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                      class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                       style="background: linear-gradient(135deg, #16a34a, #f9a825); color: white;"
                     >{{ user.fullName.charAt(0) }}</div>
                     <div>
@@ -239,32 +285,40 @@ const roleColor = (role: string) => {
                     </div>
                   </div>
                 </td>
-                <td class="font-mono text-sm text-slate-300">{{ user.username }}</td>
-                <td>
-                  <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold capitalize border', roleColor(user.role)]">
+                <td class="text-center"><span class="font-mono text-xs text-slate-300">{{ user.username }}</span></td>
+                <td class="text-center">
+                  <span :class="['inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize border', roleColor(user.role)]">
                     {{ user.role }}
                   </span>
                 </td>
-                <td>
-                  <button
-                    type="button"
-                    class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all"
-                    :class="user.biometric?.enrolled ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'"
-                    :title="user.biometric?.enrolled ? 'Fingerprint Registered. Click to re-register.' : 'Fingerprint Not Registered. Click to enroll.'"
-                    @click="openEnrollForUser(user)"
-                  >
-                    <span class="w-1.5 h-1.5 rounded-full" :class="user.biometric?.enrolled ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-amber-400'" />
-                    <span>{{ user.biometric?.enrolled ? 'Registered' : 'Not Registered' }}</span>
-                  </button>
+                <td class="text-center">
+                  <div class="flex items-center justify-center">
+                    <span
+                      v-if="user.biometric?.enrolled"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                      :title="`Enrolled: ${user.biometric.finger || 'Fingerprint'}`"
+                    >
+                      <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 text-emerald-400" />
+                      Registered
+                    </span>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20"
+                      title="Fingerprint not registered"
+                    >
+                      <UIcon name="i-heroicons-finger-print" class="w-3.5 h-3.5 opacity-60" />
+                      Unregistered
+                    </span>
+                  </div>
                 </td>
-                <td>
-                  <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', user.isActive ? 'badge-active' : 'badge-cancelled']">
+                <td class="text-center">
+                  <span :class="['inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium', user.isActive ? 'badge-active' : 'badge-cancelled']">
                     {{ user.isActive ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
-                <td class="text-slate-400 text-xs">{{ new Date(user.createdAt).toLocaleDateString('en-PH') }}</td>
-                <td>
-                  <div class="flex items-center gap-2">
+                <td class="text-center text-slate-400 text-xs">{{ new Date(user.createdAt).toLocaleDateString('en-PH') }}</td>
+                <td class="text-center">
+                  <div class="flex items-center justify-center gap-2">
                     <template v-if="user.isPrimaryAdmin && user._id !== authStore.user?.userId">
                       <div class="p-1.5 cursor-not-allowed group relative" title="Primary Administrator account is protected and cannot be edited.">
                         <UIcon name="i-heroicons-lock-closed" class="w-4 h-4 text-amber-500" />
@@ -273,48 +327,28 @@ const roleColor = (role: string) => {
                     <template v-else>
                       <button
                         class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                        :class="user.biometric?.enrolled ? 'text-emerald-400' : 'text-amber-400'"
                         :title="user.biometric?.enrolled ? 'Re-register Fingerprint' : 'Register Fingerprint'"
-                        @click="openEnrollForUser(user)"
+                        @click.stop="openEnrollForUser(user)"
                       >
-                        <UIcon name="i-heroicons-finger-print" class="w-4 h-4" :class="user.biometric?.enrolled ? 'text-emerald-400' : 'text-amber-400'" />
+                        <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
                       </button>
-                      <button
-                        v-if="user.biometric?.enrolled"
-                        class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-                        title="Remove Fingerprint"
-                        @click="confirmRemoveBio(user)"
+
+                      <UDropdownMenu
+                        :modal="false"
+                        :items="getActionsMenu(user)"
+                        :content="{ align: 'end' }"
+                        :ui="{ content: 'min-w-[190px] p-2 space-y-1', item: 'py-2.5 px-3 gap-3 text-xs rounded-lg' }"
+                        size="sm"
                       >
-                        <UIcon name="i-heroicons-x-mark" class="w-4 h-4 text-red-400" />
-                      </button>
-                      <button class="p-1.5 rounded-lg hover:bg-white/5 transition-colors" title="Edit" @click="openEdit(user)">
-                        <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
-                      </button>
-                      <button
-                        v-if="user._id !== authStore.user?.userId"
-                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                        :title="user.isActive ? 'Deactivate' : 'Activate'"
-                        @click="toggleActive(user)"
-                      >
-                        <UIcon
-                          :name="user.isActive ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-                          class="w-4 h-4"
-                          :class="user.isActive ? 'text-yellow-400' : 'text-green-400'"
-                        />
-                      </button>
-                      <template v-if="user.isPrimaryAdmin">
-                        <div class="p-1.5 cursor-not-allowed group relative" title="Primary Administrator cannot be deleted.">
-                          <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-amber-500" />
-                        </div>
-                      </template>
-                      <template v-else-if="user._id !== authStore.user?.userId">
                         <button
-                          class="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-                          title="Delete User"
-                          @click="confirmDelete(user)"
+                          class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
+                          title="More options"
+                          @click.stop
                         >
-                          <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400 hover:text-red-300" />
+                          <UIcon name="i-heroicons-ellipsis-vertical" class="w-4 h-4" />
                         </button>
-                      </template>
+                      </UDropdownMenu>
                     </template>
                   </div>
                 </td>
@@ -397,8 +431,20 @@ const roleColor = (role: string) => {
                 <label for="isActive" class="text-sm text-slate-300">Account Active</label>
               </div>
               <div class="flex gap-3 pt-2">
-                <button type="button" class="btn-secondary flex-1" @click="showModal = false">Cancel</button>
-                <button type="submit" class="btn-primary flex-1" :disabled="formLoading">
+                <button
+                  type="button"
+                  class="btn-primary justify-center hover:brightness-110 transition-all"
+                  style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                  @click="showModal = false"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="btn-primary justify-center whitespace-nowrap"
+                  style="flex: 3;"
+                  :disabled="formLoading"
+                >
                   <UIcon v-if="formLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
                   {{ formLoading ? 'Saving...' : (editingUser ? 'Update' : 'Create') }}
                 </button>
