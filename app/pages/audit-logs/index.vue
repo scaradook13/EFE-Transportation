@@ -127,31 +127,37 @@ const actionColor = (action: string) => {
       </div>
 
       <!-- Filters -->
-      <div class="glass-card p-4 flex flex-wrap gap-3">
-        <div class="relative flex-1 min-w-[200px]">
+      <div class="glass-card p-4 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[240px]">
           <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #94a3b8; z-index: 1;" />
           <input v-model="search" type="text" class="form-input search-input" placeholder="Search by user, action, module, IP address, browser..." />
         </div>
-        <select v-model="moduleFilter" class="form-input filter-dropdown w-56">
-          <option value="">All Modules</option>
-          <option v-for="m in moduleOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
-        </select>
 
-        <select
-          v-if="moduleFilter === 'User'"
-          v-model="userFilter"
-          class="form-input filter-dropdown w-64 animate-fadeIn"
-        >
-          <option value="">All Users</option>
-          <option v-for="u in usersList" :key="u._id" :value="u._id">
-            {{ u.fullName }} ({{ u.username }})
-          </option>
-        </select>
+        <div class="relative !w-52 shrink-0">
+          <select v-model="moduleFilter" class="form-input filter-dropdown !w-full appearance-none !pr-9">
+            <option value="">All Modules</option>
+            <option v-for="m in moduleOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+          </select>
+          <UIcon name="i-heroicons-chevron-down" class="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
+
+        <div v-if="moduleFilter === 'User'" class="relative !w-64 shrink-0 animate-fadeIn">
+          <select
+            v-model="userFilter"
+            class="form-input filter-dropdown !w-full appearance-none !pr-9"
+          >
+            <option value="">All Users</option>
+            <option v-for="u in usersList" :key="u._id" :value="u._id">
+              {{ u.fullName }} ({{ u.username }})
+            </option>
+          </select>
+          <UIcon name="i-heroicons-chevron-down" class="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
 
         <div class="flex items-center gap-2">
-          <input v-model="dateFrom" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="From date" />
+          <input v-model="dateFrom" type="date" class="form-input filter-dropdown !w-40 !px-3" placeholder="From date" />
           <span class="text-slate-500 text-sm">to</span>
-          <input v-model="dateTo" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="To date" />
+          <input v-model="dateTo" type="date" class="form-input filter-dropdown !w-40 !px-3" placeholder="To date" />
         </div>
         <button class="btn-secondary px-3 py-2 text-xs" @click="() => { search = ''; moduleFilter = ''; userFilter = ''; dateFrom = ''; dateTo = ''; loadLogs() }">
           <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" /> Clear
