@@ -119,7 +119,7 @@ const getIssuedBy = (a: any) => (typeof a.issuedBy === 'object' && a.issuedBy !=
               <span class="text-lg font-bold text-white">{{ dashboardStore.data?.stats?.availableTaxis ?? '—' }}</span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="badge-active px-2 py-0.5 rounded-full text-xs font-medium">In Use</span>
+              <span class="badge-in-use px-2 py-0.5 rounded-full text-xs font-medium">In Use</span>
               <span class="text-lg font-bold text-white">{{ dashboardStore.data?.stats?.inUseTaxis ?? '—' }}</span>
             </div>
             <div class="flex items-center justify-between">

@@ -86,7 +86,7 @@ const maxBreakdownBoundary = computed(() => {
 
 const statusClass = (status: string) => {
   if (status === 'Available') return 'badge-available'
-  if (status === 'In Use') return 'badge-completed'
+  if (status === 'In Use') return 'badge-in-use'
   return 'badge-maintenance'
 }
 
