@@ -294,7 +294,7 @@ const getActionsMenu = (driver: Driver) => [
                   <th class="text-center">Biometric</th>
                   <th class="text-center">Duty Status</th>
                   <th class="text-center">Status</th>
-                  <th class="text-center">Actions</th>
+                  <th class="text-center min-w-[130px]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -367,7 +367,8 @@ const getActionsMenu = (driver: Driver) => [
                     </span>
                   </td>
                   <td class="text-center">
-                    <div class="flex items-center justify-center gap-2">
+                    <div class="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                      <!-- View Profile (All roles) -->
                       <NuxtLink
                         :to="`/drivers/${driver._id}`"
                         class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
@@ -376,6 +377,7 @@ const getActionsMenu = (driver: Driver) => [
                         <UIcon name="i-heroicons-eye" class="w-4 h-4" />
                       </NuxtLink>
 
+                      <!-- Biometric Enrollment (HR & Admin) -->
                       <button
                         v-if="authStore.canManageDrivers"
                         class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
@@ -386,7 +388,31 @@ const getActionsMenu = (driver: Driver) => [
                         <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
                       </button>
 
-                      <template v-if="authStore.canManageDrivers">
+                      <!-- HR Actions: Displayed directly inline on table row -->
+                      <template v-if="authStore.isHR">
+                        <!-- Edit Driver Profile -->
+                        <button
+                          class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                          :disabled="(driver as any).operationalStatus === 'Active'"
+                          :title="(driver as any).operationalStatus === 'Active' ? 'Cannot edit while on duty' : 'Edit Profile'"
+                          @click.stop="openEdit(driver)"
+                        >
+                          <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                        </button>
+
+                        <!-- Delete Driver -->
+                        <button
+                          class="p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors text-rose-400 hover:text-rose-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                          :disabled="(driver as any).operationalStatus === 'Active'"
+                          :title="(driver as any).operationalStatus === 'Active' ? 'Cannot delete while on duty' : 'Delete Driver'"
+                          @click.stop="confirmDelete(driver)"
+                        >
+                          <UIcon name="i-heroicons-trash" class="w-4 h-4" />
+                        </button>
+                      </template>
+
+                      <!-- Admin Actions: Kept inside 3-dot dropdown menu -->
+                      <template v-else-if="authStore.canManageDrivers">
                         <UDropdownMenu
                           :modal="false"
                           :items="getActionsMenu(driver)"
