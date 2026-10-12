@@ -228,12 +228,6 @@ const getActionsMenu = (driver: Driver) => [
       onSelect: () => openEdit(driver)
     },
     {
-      label: driver.biometric?.enrolled ? 'Re-enroll Biometric' : 'Enroll Biometric',
-      icon: 'i-heroicons-finger-print',
-      onClick: () => openEnrollDriver(driver, !!driver.biometric?.enrolled),
-      onSelect: () => openEnrollDriver(driver, !!driver.biometric?.enrolled)
-    },
-    {
       label: 'Delete Driver',
       icon: 'i-heroicons-trash',
       color: 'error' as const,
@@ -381,6 +375,16 @@ const getActionsMenu = (driver: Driver) => [
                       >
                         <UIcon name="i-heroicons-eye" class="w-4 h-4" />
                       </NuxtLink>
+
+                      <button
+                        v-if="authStore.canManageDrivers"
+                        class="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                        :class="driver.biometric?.enrolled ? 'text-emerald-400' : 'text-amber-400'"
+                        :title="driver.biometric?.enrolled ? 'Re-enroll Biometric' : 'Enroll Biometric'"
+                        @click.stop="openEnrollDriver(driver, !!driver.biometric?.enrolled)"
+                      >
+                        <UIcon name="i-heroicons-finger-print" class="w-4 h-4" />
+                      </button>
 
                       <template v-if="authStore.canManageDrivers">
                         <UDropdownMenu
