@@ -19,7 +19,17 @@ const dateFrom = ref('')
 const dateTo = ref('')
 const search = ref('')
 
-const modules = ['Auth', 'Drivers', 'Taxi Units', 'Taxi Assignment']
+const moduleOptions = [
+  { value: 'Auth', label: 'Login & Security' },
+  { value: 'Drivers', label: 'Drivers' },
+  { value: 'Taxi Units', label: 'Taxi Units' },
+  { value: 'Taxi Assignment', label: 'Taxi Assignment' }
+]
+
+const formatModuleName = (mod: string) => {
+  if (mod === 'Auth') return 'Login & Security'
+  return mod
+}
 
 const loadLogs = async () => {
   loading.value = true
@@ -80,9 +90,9 @@ const actionColor = (action: string) => {
           <UIcon name="i-heroicons-magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none" style="color: #94a3b8; z-index: 1;" />
           <input v-model="search" type="text" class="form-input search-input" placeholder="Search by user, action, module, IP address, browser..." />
         </div>
-        <select v-model="moduleFilter" class="form-input filter-dropdown w-48">
+        <select v-model="moduleFilter" class="form-input filter-dropdown w-56">
           <option value="">All Modules</option>
-          <option v-for="m in modules" :key="m" :value="m">{{ m }}</option>
+          <option v-for="m in moduleOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
         </select>
         <div class="flex items-center gap-2">
           <input v-model="dateFrom" type="date" class="form-input filter-dropdown w-40 !px-3" placeholder="From date" />
@@ -109,30 +119,30 @@ const actionColor = (action: string) => {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Timestamp</th>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>Module</th>
-                  <th>Details</th>
-                  <th>IP Address</th>
+                  <th class="text-left">Timestamp</th>
+                  <th class="text-left">User</th>
+                  <th class="text-center">Action</th>
+                  <th class="text-center">Module</th>
+                  <th class="text-left">Details</th>
+                  <th class="text-center">IP Address</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="log in (logs as Array<{ _id: string; createdAt: string; user: { fullName?: string } | string; action: string; module: string; details: string; ipAddress: string }>)" :key="log._id">
-                  <td class="text-xs text-slate-400 whitespace-nowrap">{{ formatDateTime(log.createdAt) }}</td>
-                  <td class="text-white font-medium text-sm">{{ getUserName(log) }}</td>
-                  <td>
+                <tr v-for="log in (logs as Array<{ _id: string; createdAt: string; user: { fullName?: string } | string; action: string; module: string; details: string; ipAddress: string }>)" :key="log._id" class="transition-colors hover:bg-white/[0.02]">
+                  <td class="text-left text-xs text-slate-400 whitespace-nowrap">{{ formatDateTime(log.createdAt) }}</td>
+                  <td class="text-left text-white font-medium text-sm">{{ getUserName(log) }}</td>
+                  <td class="text-center">
                     <span :class="['font-mono text-xs font-bold', actionColor(log.action)]">{{ log.action }}</span>
                   </td>
-                  <td>
-                    <span class="px-2 py-0.5 rounded text-xs font-medium" style="background: rgba(255,255,255,0.05); color: #94a3b8;">
-                      {{ log.module }}
+                  <td class="text-center">
+                    <span class="px-2.5 py-0.5 rounded text-xs font-medium inline-block" style="background: rgba(255,255,255,0.05); color: #94a3b8;">
+                      {{ formatModuleName(log.module) }}
                     </span>
                   </td>
-                  <td>
+                  <td class="text-left">
                     <NotesViewer :content="log.details" title="Audit Log Notes" />
                   </td>
-                  <td class="font-mono text-xs text-slate-500">{{ log.ipAddress }}</td>
+                  <td class="text-center font-mono text-xs text-slate-400">{{ log.ipAddress }}</td>
                 </tr>
               </tbody>
             </table>
