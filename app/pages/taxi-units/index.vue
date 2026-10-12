@@ -137,6 +137,7 @@ const getActionsMenu = (unit: TaxiUnit) => [
       label: unit.status === 'Maintenance' ? 'Mark as Available' : 'Set to Maintenance',
       icon: 'i-heroicons-wrench-screwdriver',
       disabled: unit.status === 'In Use',
+      onClick: () => toggleStatus(unit),
       onSelect: () => toggleStatus(unit)
     },
     {
@@ -144,6 +145,7 @@ const getActionsMenu = (unit: TaxiUnit) => [
       icon: 'i-heroicons-trash',
       color: 'error' as const,
       disabled: unit.status === 'In Use',
+      onClick: () => confirmDelete(unit),
       onSelect: () => confirmDelete(unit)
     }
   ]
@@ -282,21 +284,21 @@ const getTaxiColorHex = (colorName: string) => {
                             <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
                           </button>
                         </div>
-                        <div @click.stop>
-                          <UDropdownMenu
-                            :items="getActionsMenu(unit)"
-                            :content="{ align: 'end' }"
-                            :ui="{ content: 'min-w-[190px] p-2 space-y-1', item: 'py-2.5 px-3 gap-3 text-xs rounded-lg' }"
-                            size="sm"
+                        <UDropdownMenu
+                          :modal="false"
+                          :items="getActionsMenu(unit)"
+                          :content="{ align: 'end' }"
+                          :ui="{ content: 'min-w-[190px] p-2 space-y-1', item: 'py-2.5 px-3 gap-3 text-xs rounded-lg' }"
+                          size="sm"
+                        >
+                          <button
+                            class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
+                            title="More options"
+                            @click.stop
                           >
-                            <button
-                              class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
-                              title="More options"
-                            >
-                              <UIcon name="i-heroicons-ellipsis-vertical" class="w-4 h-4" />
-                            </button>
-                          </UDropdownMenu>
-                        </div>
+                            <UIcon name="i-heroicons-ellipsis-vertical" class="w-4 h-4" />
+                          </button>
+                        </UDropdownMenu>
                       </template>
                     </div>
                   </td>
