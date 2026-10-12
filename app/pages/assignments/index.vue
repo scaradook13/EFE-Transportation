@@ -94,6 +94,71 @@ watch(searchQuery, (val) => {
 const availableDrivers = ref<{ _id: string; fullName: string; driverId: string; biometric?: { enrolled: boolean } }[]>([])
 const availableTaxis = ref<{ _id: string; taxiNumber: string; plateNumber: string; brand: string; model: string; taxiType?: TaxiType }[]>([])
 
+// --- Searchable Combobox State for Issue Modal ---
+const isDriverDropdownOpen = ref(false)
+const driverSearch = ref('')
+const driverDropdownRef = ref<HTMLElement | null>(null)
+
+const selectedTaxi = computed(() => availableTaxis.value.find(t => t._id === issueForm.taxiUnitId))
+const isTaxiDropdownOpen = ref(false)
+const taxiSearch = ref('')
+const taxiDropdownRef = ref<HTMLElement | null>(null)
+
+const filteredDrivers = computed(() => {
+  const query = driverSearch.value.trim().toLowerCase()
+  if (!query) return availableDrivers.value
+  return availableDrivers.value.filter(d =>
+    d.fullName.toLowerCase().includes(query) ||
+    d.driverId.toLowerCase().includes(query)
+  )
+})
+
+const filteredTaxis = computed(() => {
+  const query = taxiSearch.value.trim().toLowerCase()
+  if (!query) return availableTaxis.value
+  return availableTaxis.value.filter(t =>
+    t.taxiNumber.toLowerCase().includes(query) ||
+    t.plateNumber.toLowerCase().includes(query) ||
+    (t.brand && t.brand.toLowerCase().includes(query)) ||
+    (t.model && t.model.toLowerCase().includes(query)) ||
+    (t.taxiType && t.taxiType.toLowerCase().includes(query))
+  )
+})
+
+onClickOutside(driverDropdownRef, () => {
+  isDriverDropdownOpen.value = false
+})
+
+onClickOutside(taxiDropdownRef, () => {
+  isTaxiDropdownOpen.value = false
+})
+
+const selectDriver = (driver: (typeof availableDrivers.value)[0]) => {
+  issueForm.driverId = driver._id
+  touchIssue('driverId')
+  isDriverDropdownOpen.value = false
+  driverSearch.value = ''
+}
+
+const clearDriverSelection = () => {
+  issueForm.driverId = ''
+  touchIssue('driverId')
+  driverSearch.value = ''
+}
+
+const selectTaxi = (taxi: (typeof availableTaxis.value)[0]) => {
+  issueForm.taxiUnitId = taxi._id
+  touchIssue('taxiUnitId')
+  isTaxiDropdownOpen.value = false
+  taxiSearch.value = ''
+}
+
+const clearTaxiSelection = () => {
+  issueForm.taxiUnitId = ''
+  touchIssue('taxiUnitId')
+  taxiSearch.value = ''
+}
+
 const showDispatcherEnrollModal = ref(false)
 
 const canIssue = computed(() => ['dispatcher', 'admin'].includes(authStore.user?.role || ''))
@@ -136,6 +201,10 @@ const openIssueModal = async () => {
   issueForm.taxiUnitId = ''
   issueForm.remarks = ''
   issueError.value = ''
+  driverSearch.value = ''
+  taxiSearch.value = ''
+  isDriverDropdownOpen.value = false
+  isTaxiDropdownOpen.value = false
   clearIssueErrors()
   await loadFormData()
   showIssueModal.value = true
@@ -670,26 +739,189 @@ const formatDutyTime = (timeIn: string) => {
                   Enroll Now
                 </button>
               </div>
-              <div>
+              <!-- Searchable Driver Combobox -->
+              <div class="relative" ref="driverDropdownRef">
                 <label class="form-label">Select Driver *</label>
-                <select v-model="issueForm.driverId" @blur="touchIssue('driverId')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': issueErrors.driverId }">
-                  <option value="">— Select Available Driver —</option>
-                  <option v-for="d in availableDrivers" :key="d._id" :value="d._id">
-                    {{ d.fullName }} ({{ d.driverId }})
-                  </option>
-                </select>
+                <div
+                  tabindex="0"
+                  class="form-input flex items-center justify-between cursor-pointer select-none transition-all"
+                  :class="{ 
+                    'border-red-500/50 focus:border-red-500': issueErrors.driverId,
+                    'ring-2 ring-green-500/30 border-green-500/60': isDriverDropdownOpen 
+                  }"
+                  @click="isDriverDropdownOpen = !isDriverDropdownOpen; if (isDriverDropdownOpen) isTaxiDropdownOpen = false"
+                  @keydown.enter.prevent="isDriverDropdownOpen = !isDriverDropdownOpen"
+                  @keydown.escape="isDriverDropdownOpen = false"
+                >
+                  <div v-if="selectedDriver" class="flex items-center gap-2 truncate">
+                    <span class="text-white font-medium truncate">{{ selectedDriver.fullName }}</span>
+                    <span class="text-xs font-mono text-emerald-400 shrink-0">({{ selectedDriver.driverId }})</span>
+                  </div>
+                  <span v-else class="text-slate-400 text-sm truncate">— Select Available Driver —</span>
+
+                  <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                    <button
+                      v-if="issueForm.driverId"
+                      type="button"
+                      class="p-0.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                      title="Clear selection"
+                      @click.stop="clearDriverSelection"
+                    >
+                      <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
+                    </button>
+                    <UIcon
+                      name="i-heroicons-chevron-down"
+                      class="w-4 h-4 text-slate-400 transition-transform duration-200"
+                      :class="{ 'rotate-180 text-green-400': isDriverDropdownOpen }"
+                    />
+                  </div>
+                </div>
+
+                <!-- Driver Dropdown Popover -->
+                <div
+                  v-if="isDriverDropdownOpen"
+                  class="absolute z-50 left-0 right-0 mt-1.5 p-2 rounded-xl flex flex-col animate-fadeIn border border-white/15"
+                  style="background: #111827; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 8px 10px -6px rgba(0, 0, 0, 0.8);"
+                >
+                  <!-- Search Input inside Dropdown -->
+                  <div class="relative mb-2">
+                    <UIcon name="i-heroicons-magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input
+                      v-model="driverSearch"
+                      type="text"
+                      placeholder="Search driver by name or ID..."
+                      class="form-input text-xs !py-2 !pl-9 !pr-8 w-full bg-slate-900 border-white/10 focus:border-green-500/50"
+                      @click.stop
+                      autofocus
+                    />
+                    <button
+                      v-if="driverSearch"
+                      type="button"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5"
+                      @click.stop="driverSearch = ''"
+                    >
+                      <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <!-- Driver List -->
+                  <div class="overflow-y-auto max-h-48 space-y-1">
+                    <div
+                      v-for="d in filteredDrivers"
+                      :key="d._id"
+                      class="px-3 py-2 rounded-lg text-xs cursor-pointer hover:bg-white/10 flex items-center justify-between transition-colors"
+                      :class="{ 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300': issueForm.driverId === d._id }"
+                      @click="selectDriver(d)"
+                    >
+                      <div class="truncate mr-2">
+                        <p class="font-medium text-white truncate">{{ d.fullName }}</p>
+                        <p class="text-[11px] text-slate-400 font-mono mt-0.5">{{ d.driverId }}</p>
+                      </div>
+                      <UIcon v-if="issueForm.driverId === d._id" name="i-heroicons-check" class="w-4 h-4 text-emerald-400 shrink-0" />
+                    </div>
+                    <div v-if="!filteredDrivers.length" class="text-xs text-slate-400 p-4 text-center">
+                      <p v-if="!availableDrivers.length" class="text-amber-400">No available drivers at this time</p>
+                      <p v-else>No drivers match "{{ driverSearch }}"</p>
+                    </div>
+                  </div>
+                </div>
+
                 <p v-if="issueErrors.driverId" class="mt-1 text-xs text-red-400">{{ issueErrors.driverId }}</p>
                 <p v-else-if="!availableDrivers.length" class="text-xs text-amber-400 mt-1">No available drivers at this time</p>
               </div>
 
-              <div>
+              <!-- Searchable Taxi Unit Combobox -->
+              <div class="relative" ref="taxiDropdownRef">
                 <label class="form-label">Select Taxi Unit *</label>
-                <select v-model="issueForm.taxiUnitId" @blur="touchIssue('taxiUnitId')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': issueErrors.taxiUnitId }">
-                  <option value="">— Select Available Taxi —</option>
-                  <option v-for="t in availableTaxis" :key="t._id" :value="t._id">
-                    {{ t.taxiNumber }} — {{ t.plateNumber }} ({{ t.brand }} {{ t.model }}) • {{ formatTaxiType(t.taxiType) }} (₱{{ t.taxiType === 'SUPERMAN' ? '990' : '920' }} base)
-                  </option>
-                </select>
+                <div
+                  tabindex="0"
+                  class="form-input flex items-center justify-between cursor-pointer select-none transition-all"
+                  :class="{ 
+                    'border-red-500/50 focus:border-red-500': issueErrors.taxiUnitId,
+                    'ring-2 ring-green-500/30 border-green-500/60': isTaxiDropdownOpen 
+                  }"
+                  @click="isTaxiDropdownOpen = !isTaxiDropdownOpen; if (isTaxiDropdownOpen) isDriverDropdownOpen = false"
+                  @keydown.enter.prevent="isTaxiDropdownOpen = !isTaxiDropdownOpen"
+                  @keydown.escape="isTaxiDropdownOpen = false"
+                >
+                  <div v-if="selectedTaxi" class="flex items-center gap-2 truncate">
+                    <span class="text-white font-bold">{{ selectedTaxi.taxiNumber }}</span>
+                    <span class="text-xs font-mono text-slate-300 bg-white/10 px-1.5 py-0.5 rounded">{{ selectedTaxi.plateNumber }}</span>
+                    <span class="text-xs text-emerald-400 font-medium hidden sm:inline">• {{ formatTaxiType(selectedTaxi.taxiType) }}</span>
+                  </div>
+                  <span v-else class="text-slate-400 text-sm truncate">— Select Available Taxi —</span>
+
+                  <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                    <button
+                      v-if="issueForm.taxiUnitId"
+                      type="button"
+                      class="p-0.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                      title="Clear selection"
+                      @click.stop="clearTaxiSelection"
+                    >
+                      <UIcon name="i-heroicons-x-mark" class="w-4 h-4" />
+                    </button>
+                    <UIcon
+                      name="i-heroicons-chevron-down"
+                      class="w-4 h-4 text-slate-400 transition-transform duration-200"
+                      :class="{ 'rotate-180 text-green-400': isTaxiDropdownOpen }"
+                    />
+                  </div>
+                </div>
+
+                <!-- Taxi Dropdown Popover -->
+                <div
+                  v-if="isTaxiDropdownOpen"
+                  class="absolute z-50 left-0 right-0 mt-1.5 p-2 rounded-xl flex flex-col animate-fadeIn border border-white/15"
+                  style="background: #111827; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 8px 10px -6px rgba(0, 0, 0, 0.8);"
+                >
+                  <!-- Search Input inside Dropdown -->
+                  <div class="relative mb-2">
+                    <UIcon name="i-heroicons-magnifying-glass" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input
+                      v-model="taxiSearch"
+                      type="text"
+                      placeholder="Search by taxi no., plate, brand, or model..."
+                      class="form-input text-xs !py-2 !pl-9 !pr-8 w-full bg-slate-900 border-white/10 focus:border-green-500/50"
+                      @click.stop
+                      autofocus
+                    />
+                    <button
+                      v-if="taxiSearch"
+                      type="button"
+                      class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5"
+                      @click.stop="taxiSearch = ''"
+                    >
+                      <UIcon name="i-heroicons-x-mark" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <!-- Taxi List -->
+                  <div class="overflow-y-auto max-h-52 space-y-1">
+                    <div
+                      v-for="t in filteredTaxis"
+                      :key="t._id"
+                      class="px-3 py-2 rounded-lg text-xs cursor-pointer hover:bg-white/10 flex items-center justify-between transition-colors"
+                      :class="{ 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300': issueForm.taxiUnitId === t._id }"
+                      @click="selectTaxi(t)"
+                    >
+                      <div class="truncate mr-2">
+                        <div class="flex items-center gap-2">
+                          <span class="font-bold text-white">{{ t.taxiNumber }}</span>
+                          <span class="font-mono text-[11px] text-slate-300 bg-white/10 px-1.5 py-0.5 rounded">{{ t.plateNumber }}</span>
+                          <span class="text-[11px] text-emerald-400 font-medium">{{ formatTaxiType(t.taxiType) }}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-0.5 truncate">{{ t.brand }} {{ t.model }} • ₱{{ t.taxiType === 'SUPERMAN' ? '990' : '920' }} base</p>
+                      </div>
+                      <UIcon v-if="issueForm.taxiUnitId === t._id" name="i-heroicons-check" class="w-4 h-4 text-emerald-400 shrink-0" />
+                    </div>
+                    <div v-if="!filteredTaxis.length" class="text-xs text-slate-400 p-4 text-center">
+                      <p v-if="!availableTaxis.length" class="text-amber-400">No available taxis at this time</p>
+                      <p v-else>No taxis match "{{ taxiSearch }}"</p>
+                    </div>
+                  </div>
+                </div>
+
                 <p v-if="issueErrors.taxiUnitId" class="mt-1 text-xs text-red-400">{{ issueErrors.taxiUnitId }}</p>
                 <p v-else-if="!availableTaxis.length" class="text-xs text-amber-400 mt-1">No available taxis at this time</p>
               </div>
