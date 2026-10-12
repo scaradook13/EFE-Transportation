@@ -182,34 +182,20 @@ const getTaxiColorHex = (colorName: string) => {
                   @click="authStore.canViewBoundaryReports ? navigateTo(`/taxi-units/${unit._id}`) : null"
                 >
                   <td>
-                    <div class="flex items-center gap-2.5">
-                      <div class="w-8 h-8 rounded-lg bg-yellow-900/20 border border-yellow-500/20 flex items-center justify-center group-hover:border-yellow-500/50 transition-colors">
-                        <UIcon name="i-lucide-car-taxi-front" class="w-4 h-4 text-yellow-400" />
-                      </div>
-                      <div>
-                        <span
-                          class="font-bold text-white transition-colors flex items-center gap-1.5"
-                          :class="authStore.canViewBoundaryReports ? 'group-hover:text-yellow-400' : ''"
-                        >
-                          {{ unit.taxiNumber }}
-                          <UIcon
-                            v-if="authStore.canViewBoundaryReports"
-                            name="i-heroicons-arrow-top-right-on-square"
-                            class="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity"
-                          />
-                        </span>
-                      </div>
-                    </div>
+                    <span
+                      class="font-bold text-white transition-colors flex items-center gap-1.5"
+                      :class="authStore.canViewBoundaryReports ? 'group-hover:text-yellow-400' : ''"
+                    >
+                      {{ unit.taxiNumber }}
+                      <UIcon
+                        v-if="authStore.canViewBoundaryReports"
+                        name="i-heroicons-arrow-top-right-on-square"
+                        class="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity"
+                      />
+                    </span>
                   </td>
                   <td>
-                    <span
-                      :class="[
-                        'px-2.5 py-0.5 rounded-full text-xs font-semibold border',
-                        unit.taxiType === 'SUPERMAN'
-                          ? 'bg-blue-500/15 text-blue-400 border-blue-500/25'
-                          : 'bg-amber-500/15 text-amber-400 border-amber-500/25'
-                      ]"
-                    >
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 text-slate-300 border border-white/10">
                       {{ formatTaxiType(unit.taxiType) }}
                     </span>
                   </td>
