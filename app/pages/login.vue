@@ -208,12 +208,11 @@ const handleLogin = async () => {
     <!-- Biometric Login Modal -->
     <BiometricAuthModal
       v-if="showBioModal"
-      :user-name="form.username || undefined"
       title="Biometric Sign In"
-      :description="form.username ? `Place your finger on the reader to verify account ${form.username}` : 'Place your finger on the reader to sign in'"
-      :mode="form.username ? '1:1' : '1:N'"
+      description="Place your finger on the reader to sign in"
+      mode="1:N"
       endpoint="/api/auth/biometric-login"
-      :payload="{ username: form.username || undefined }"
+      :payload="{}"
       @close="showBioModal = false"
       @success="onBiometricSuccess"
       @failed="(msg) => error = msg"
