@@ -134,11 +134,11 @@ const statusClass = (status: string) => {
 const getActionsMenu = (unit: TaxiUnit) => [
   [
     {
-      label: unit.status === 'Maintenance' ? 'Mark as Available' : 'Set to Maintenance',
-      icon: 'i-heroicons-wrench-screwdriver',
+      label: 'Edit Unit',
+      icon: 'i-heroicons-pencil-square',
       disabled: unit.status === 'In Use',
-      onClick: () => toggleStatus(unit),
-      onSelect: () => toggleStatus(unit)
+      onClick: () => openEdit(unit),
+      onSelect: () => openEdit(unit)
     },
     {
       label: 'Delete Unit',
@@ -279,9 +279,17 @@ const getTaxiColorHex = (colorName: string) => {
                       </button>
 
                       <template v-if="authStore.canManageTaxis">
-                        <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be edited until it has been returned.' : undefined">
-                          <button class="p-1.5 rounded-lg transition-colors hover:bg-white/5 text-blue-400" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : ''" :disabled="unit.status === 'In Use'" @click.stop="openEdit(unit)">
-                            <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
+                        <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be set to maintenance.' : (unit.status === 'Maintenance' ? 'Mark as Available' : 'Set to Maintenance')">
+                          <button
+                            class="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                            :class="[
+                              unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed text-slate-500' :
+                              unit.status === 'Maintenance' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-slate-400 hover:text-white'
+                            ]"
+                            :disabled="unit.status === 'In Use'"
+                            @click.stop="toggleStatus(unit)"
+                          >
+                            <UIcon name="i-heroicons-wrench-screwdriver" class="w-4 h-4" />
                           </button>
                         </div>
                         <UDropdownMenu
