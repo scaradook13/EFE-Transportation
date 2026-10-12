@@ -59,28 +59,8 @@ const logout = async () => {
         </div>
       </nav>
 
-      <!-- User info -->
+      <!-- Logout -->
       <div class="px-4 py-4 border-t" style="border-color: rgba(255,255,255,0.06);">
-        <NuxtLink to="/profile" class="flex items-center gap-3 mb-3 p-1.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
-          <div
-            class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow"
-            style="background: linear-gradient(135deg, #16a34a, #f9a825); color: white;"
-          >
-            {{ authStore.user?.fullName?.charAt(0)?.toUpperCase() || 'U' }}
-          </div>
-          <div class="overflow-hidden flex-1">
-            <p class="text-sm font-semibold text-white truncate group-hover:text-emerald-400 transition-colors">{{ authStore.user?.fullName }}</p>
-            <div class="flex items-center gap-1.5 mt-0.5">
-              <span class="text-xs capitalize" style="color: #4ade80;">{{ authStore.user?.role }}</span>
-              <span
-                class="w-1.5 h-1.5 rounded-full"
-                :class="authStore.user?.biometric?.enrolled ? 'bg-emerald-400' : 'bg-amber-400'"
-                :title="authStore.user?.biometric?.enrolled ? 'Fingerprint Registered' : 'Fingerprint Not Registered'"
-              />
-            </div>
-          </div>
-          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
-        </NuxtLink>
         <button
           class="w-full text-left nav-item text-red-400 hover:text-red-300"
           style="color: #f87171;"
@@ -110,8 +90,39 @@ const logout = async () => {
           </p>
         </div>
 
-        <!-- Right actions -->
-        <div class="flex items-center gap-3 ml-auto">
+        <!-- Right actions: User profile on the upper right -->
+        <div class="flex items-center gap-2.5 ml-auto">
+          <NuxtLink
+            to="/profile"
+            class="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 transition-colors cursor-pointer group"
+          >
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow"
+              style="background: linear-gradient(135deg, #16a34a, #f9a825); color: white;"
+            >
+              {{ authStore.user?.fullName?.charAt(0)?.toUpperCase() || 'U' }}
+            </div>
+            <div class="hidden sm:block text-left">
+              <p class="text-xs font-semibold text-white leading-tight group-hover:text-emerald-400 transition-colors">{{ authStore.user?.fullName }}</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[11px] capitalize" style="color: #4ade80;">{{ authStore.user?.role }}</span>
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="authStore.user?.biometric?.enrolled ? 'bg-emerald-400' : 'bg-amber-400'"
+                  :title="authStore.user?.biometric?.enrolled ? 'Fingerprint Registered' : 'Fingerprint Not Registered'"
+                />
+              </div>
+            </div>
+            <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
+          </NuxtLink>
+
+          <button
+            class="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Logout"
+            @click="logout"
+          >
+            <UIcon name="i-heroicons-arrow-right-on-rectangle" class="w-5 h-5" />
+          </button>
         </div>
       </header>
 
