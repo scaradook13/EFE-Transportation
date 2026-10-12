@@ -26,13 +26,22 @@ import { useFormValidation } from '~/composables/useFormValidation'
 
 const form = reactive<CreateTaxiUnitPayload>({
   taxiNumber: '', plateNumber: '', brand: '', model: '',
-  year: new Date().getFullYear(), color: '', taxiType: 'BATMAN', status: 'Available'
+  year: new Date().getFullYear(), color: 'Yellow', taxiType: 'BATMAN', status: 'Available'
 })
 
 const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(taxiUnitSchema, form)
 
+const normalizeColor = (c?: string) => {
+  const norm = (c || '').toLowerCase().trim()
+  if (norm === 'green') return 'Green'
+  if (norm === 'yellow') return 'Yellow'
+  if (norm === 'white') return 'White'
+  if (norm === 'black') return 'Black'
+  return 'Yellow'
+}
+
 const resetForm = () => {
-  Object.assign(form, { taxiNumber: '', plateNumber: '', brand: '', model: '', year: new Date().getFullYear(), color: '', taxiType: 'BATMAN', status: 'Available' })
+  Object.assign(form, { taxiNumber: '', plateNumber: '', brand: '', model: '', year: new Date().getFullYear(), color: 'Yellow', taxiType: 'BATMAN', status: 'Available' })
   clearErrors()
   editingUnit.value = null
 }
@@ -57,7 +66,7 @@ const openEdit = (unit: TaxiUnit) => {
   editingUnit.value = unit
   formError.value = ''
   clearErrors()
-  Object.assign(form, { ...unit, taxiType: unit.taxiType || 'BATMAN' })
+  Object.assign(form, { ...unit, color: normalizeColor(unit.color), taxiType: unit.taxiType || 'BATMAN' })
   showModal.value = true
 }
 
@@ -319,9 +328,20 @@ const getTaxiColorHex = (colorName: string) => {
                 <div>
                   <label class="form-label mb-1 block">Color *</label>
                   <div class="relative">
-                    <input v-model="form.color" @blur="touch('color')" type="text" class="form-input !pl-10" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.color }" required placeholder="Yellow" />
+                    <select
+                      v-model="form.color"
+                      @blur="touch('color')"
+                      class="form-input !pl-10 cursor-pointer"
+                      :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.color }"
+                      required
+                    >
+                      <option value="Green">Green</option>
+                      <option value="Yellow">Yellow</option>
+                      <option value="White">White</option>
+                      <option value="Black">Black</option>
+                    </select>
                     <div 
-                      class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border shadow-sm" 
+                      class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border shadow-sm pointer-events-none" 
                       :style="{ 
                         background: getTaxiColorHex(form.color), 
                         borderColor: getTaxiColorHex(form.color) === '#ffffff' ? '#cbd5e1' : 'rgba(255,255,255,0.2)' 
