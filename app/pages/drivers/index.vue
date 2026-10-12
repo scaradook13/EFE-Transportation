@@ -588,8 +588,20 @@ const isLicenseExpired = (d: string) => new Date(d) < new Date()
               </div>
 
               <div class="flex gap-3 pt-2">
-                <button type="button" class="btn-secondary flex-1" @click="showModal = false">Cancel</button>
-                <button type="submit" class="btn-primary flex-1" :disabled="formLoading">
+                <button
+                  type="button"
+                  class="btn-primary justify-center hover:brightness-110 transition-all"
+                  style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                  @click="showModal = false"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="btn-primary justify-center whitespace-nowrap"
+                  style="flex: 3;"
+                  :disabled="formLoading"
+                >
                   <UIcon v-if="formLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
                   {{ formLoading ? 'Saving...' : (editingDriver ? 'Update Driver' : 'Create Driver') }}
                 </button>
