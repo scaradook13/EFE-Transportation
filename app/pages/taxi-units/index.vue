@@ -103,6 +103,28 @@ const handleDelete = async () => {
   } catch { toast.add({ title: 'Delete failed', color: 'error' }) }
 }
 
+const toggleStatus = async (unit: TaxiUnit) => {
+  if (unit.status === 'In Use') {
+    toast.add({ title: 'This taxi is currently in use and cannot be changed.', color: 'error' })
+    return
+  }
+  const newStatus = unit.status === 'Maintenance' ? 'Available' : 'Maintenance'
+  try {
+    await taxiStore.update(unit._id, { status: newStatus })
+    toast.add({
+      title: `Taxi ${unit.taxiNumber} marked as ${newStatus}`,
+      color: newStatus === 'Available' ? 'success' : 'warning'
+    })
+    loadUnits()
+  } catch (err: any) {
+    toast.add({
+      title: 'Failed to update status',
+      description: err?.data?.message || err?.message || 'Error updating status',
+      color: 'error'
+    })
+  }
+}
+
 const statusClass = (status: string) => {
   if (status === 'Available') return 'badge-available'
   if (status === 'In Use') return 'badge-completed'
@@ -237,14 +259,24 @@ const getTaxiColorHex = (colorName: string) => {
                       </button>
 
                       <template v-if="authStore.canManageTaxis">
+                        <div :title="unit.status === 'In Use' ? 'This taxi is currently in use and cannot be changed.' : (unit.status === 'Maintenance' ? 'Mark as Available' : 'Set to Maintenance')">
+                          <button
+                            class="p-1.5 rounded-lg transition-colors"
+                            :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : (unit.status === 'Maintenance' ? 'text-amber-400 hover:bg-emerald-500/10 hover:text-emerald-400' : 'text-slate-400 hover:text-amber-400 hover:bg-white/5')"
+                            :disabled="unit.status === 'In Use'"
+                            @click.stop="toggleStatus(unit)"
+                          >
+                            <UIcon name="i-heroicons-wrench-screwdriver" class="w-4 h-4" />
+                          </button>
+                        </div>
                         <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be edited until it has been returned.' : undefined">
-                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'" :disabled="unit.status === 'In Use'" @click.stop="openEdit(unit)">
-                            <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 text-blue-400" />
+                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5 text-blue-400'" :disabled="unit.status === 'In Use'" @click.stop="openEdit(unit)">
+                            <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
                           </button>
                         </div>
                         <div :title="unit.status === 'In Use' ? 'This taxi is currently assigned to a driver and cannot be deleted.' : undefined">
-                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10'" :disabled="unit.status === 'In Use'" @click.stop="confirmDelete(unit)">
-                            <UIcon name="i-heroicons-trash" class="w-4 h-4 text-red-400" />
+                          <button class="p-1.5 rounded-lg transition-colors" :class="unit.status === 'In Use' ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-500/10 text-red-400'" :disabled="unit.status === 'In Use'" @click.stop="confirmDelete(unit)">
+                            <UIcon name="i-heroicons-trash" class="w-4 h-4" />
                           </button>
                         </div>
                       </template>
@@ -322,7 +354,7 @@ const getTaxiColorHex = (colorName: string) => {
                   <input v-model.number="form.year" @blur="touch('year')" type="number" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.year }" required :min="1990" :max="new Date().getFullYear() + 1" />
                   <p v-if="errors.year" class="mt-1 text-xs text-red-400">{{ errors.year }}</p>
                 </div>
-                <div>
+                <div class="sm:col-span-2">
                   <label class="form-label mb-1 block">Color *</label>
                   <div class="relative">
                     <select
@@ -346,14 +378,6 @@ const getTaxiColorHex = (colorName: string) => {
                     />
                   </div>
                   <p v-if="errors.color" class="mt-1 text-xs text-red-400">{{ errors.color }}</p>
-                </div>
-                <div>
-                  <label class="form-label">Status</label>
-                  <select v-model="form.status" @blur="touch('status')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.status }">
-                    <option value="Available">Available</option>
-                    <option value="Maintenance">Maintenance</option>
-                  </select>
-                  <p v-if="errors.status" class="mt-1 text-xs text-red-400">{{ errors.status }}</p>
                 </div>
               </div>
               <div class="flex gap-3 pt-2">
