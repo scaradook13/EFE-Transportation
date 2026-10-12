@@ -66,7 +66,7 @@ export default defineNuxtConfig({
     jwtExpires: process.env.JWT_EXPIRES || '1h',
     public: {
       appName: 'EFE Taxi Dispatch System',
-      appUrl: process.env.APP_URL || 'http://localhost:3000'
+      appUrl: process.env.APP_URL || 'https://localhost:3000'
     }
   },
 
