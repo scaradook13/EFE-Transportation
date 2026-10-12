@@ -212,14 +212,14 @@ const getTaxiColorHex = (colorName: string) => {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Taxi #</th>
-                  <th>Type</th>
-                  <th>Plate No.</th>
-                  <th>Vehicle</th>
-                  <th>Year</th>
-                  <th>Color</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th class="text-center">Taxi #</th>
+                  <th class="text-center">Type</th>
+                  <th class="text-center">Plate No.</th>
+                  <th class="text-center">Vehicle</th>
+                  <th class="text-center">Year</th>
+                  <th class="text-center">Color</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,8 +232,8 @@ const getTaxiColorHex = (colorName: string) => {
                   ]"
                   @click="authStore.canViewBoundaryReports ? navigateTo(`/taxi-units/${unit._id}`) : null"
                 >
-                  <td>
-                    <span class="font-bold text-white flex items-center gap-1.5">
+                  <td class="text-center">
+                    <span class="font-bold text-white inline-flex items-center justify-center gap-1.5">
                       {{ unit.taxiNumber }}
                       <UIcon
                         v-if="authStore.canViewBoundaryReports"
@@ -242,18 +242,18 @@ const getTaxiColorHex = (colorName: string) => {
                       />
                     </span>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/5 text-slate-300 border border-white/10">
                       {{ formatTaxiType(unit.taxiType) }}
                     </span>
                   </td>
-                  <td><span class="font-mono text-sm text-slate-300 uppercase">{{ unit.plateNumber }}</span></td>
-                  <td>
+                  <td class="text-center"><span class="font-mono text-sm text-slate-300 uppercase">{{ unit.plateNumber }}</span></td>
+                  <td class="text-center">
                     <p class="text-white font-medium">{{ unit.brand }} {{ unit.model }}</p>
                   </td>
-                  <td class="text-slate-400">{{ unit.year }}</td>
-                  <td>
-                    <div class="flex items-center gap-2">
+                  <td class="text-center text-slate-400">{{ unit.year }}</td>
+                  <td class="text-center">
+                    <div class="inline-flex items-center justify-center gap-2">
                       <div 
                         class="w-3 h-3 rounded-full border" 
                         :style="{ 
@@ -264,11 +264,11 @@ const getTaxiColorHex = (colorName: string) => {
                       <span class="text-slate-300 text-sm">{{ unit.color }}</span>
                     </div>
                   </td>
-                  <td>
+                  <td class="text-center">
                     <span :class="['px-2 py-0.5 rounded-full text-xs font-medium', statusClass(unit.status)]">{{ unit.status }}</span>
                   </td>
-                  <td>
-                    <div class="flex items-center gap-2.5">
+                  <td class="text-center">
+                    <div class="flex items-center justify-center gap-2.5">
                       <button
                         v-if="authStore.canViewBoundaryReports"
                         class="p-1.5 rounded-lg transition-colors hover:bg-emerald-500/10 text-emerald-400"
