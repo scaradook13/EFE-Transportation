@@ -186,6 +186,20 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.data-table th.text-center,
+.data-table th[class*="text-center"],
+.data-table td.text-center,
+.data-table td[class*="text-center"] {
+  text-align: center !important;
+}
+
+.data-table th.text-right,
+.data-table th[class*="text-right"],
+.data-table td.text-right,
+.data-table td[class*="text-right"] {
+  text-align: right !important;
+}
+
 .data-table td {
   padding: 0.875rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
