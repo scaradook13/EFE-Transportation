@@ -7,7 +7,13 @@ export interface UserBiometric {
   enrolledAt?: string | null
 }
 
-export interface User {
+export interface ArchiveMeta {
+  isArchived?: boolean
+  archivedAt?: string | null
+  archivedBy?: { _id: string; fullName: string; username: string } | string | null
+}
+
+export interface User extends ArchiveMeta {
   _id: string
   username: string
   fullName: string
@@ -41,7 +47,7 @@ export interface EmergencyContact {
   contactNumber: string
 }
 
-export interface Driver {
+export interface Driver extends ArchiveMeta {
   _id: string
   driverId: string
   fullName: string
@@ -95,7 +101,7 @@ export interface CreateDriverPayload {
 export type TaxiUnitStatus = 'Available' | 'In Use' | 'Maintenance'
 export type TaxiType = 'BATMAN' | 'SUPERMAN'
 
-export interface TaxiUnit {
+export interface TaxiUnit extends ArchiveMeta {
   _id: string
   taxiNumber: string
   plateNumber: string

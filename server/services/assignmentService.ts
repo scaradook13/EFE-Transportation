@@ -21,7 +21,7 @@ export const assignmentService = {
   async issue(dto: IssueDto) {
     // 1. Atomically lock Driver
     const driver = await Driver.findOneAndUpdate(
-      { _id: dto.driverId, employmentStatus: 'Active', operationalStatus: 'Available', 'biometric.enrolled': true },
+      { _id: dto.driverId, employmentStatus: 'Active', operationalStatus: 'Available', 'biometric.enrolled': true, isArchived: { $ne: true } },
       { operationalStatus: 'Active' },
       { new: true }
     )
@@ -31,7 +31,7 @@ export const assignmentService = {
 
     // 2. Atomically lock Taxi
     const taxi = await TaxiUnit.findOneAndUpdate(
-      { _id: dto.taxiUnitId, status: 'Available' },
+      { _id: dto.taxiUnitId, status: 'Available', isArchived: { $ne: true } },
       { status: 'In Use' },
       { new: true }
     )
@@ -174,11 +174,11 @@ export const assignmentService = {
       todayReturned,
       avgHoursResult
     ] = await Promise.all([
-      Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Available', 'biometric.enrolled': true }),
-      Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Active' }),
-      TaxiUnit.countDocuments({ status: 'Available' }),
-      TaxiUnit.countDocuments({ status: 'In Use' }),
-      TaxiUnit.countDocuments({ status: 'Maintenance' }),
+      Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Available', 'biometric.enrolled': true, isArchived: { $ne: true } }),
+      Driver.countDocuments({ employmentStatus: 'Active', operationalStatus: 'Active', isArchived: { $ne: true } }),
+      TaxiUnit.countDocuments({ status: 'Available', isArchived: { $ne: true } }),
+      TaxiUnit.countDocuments({ status: 'In Use', isArchived: { $ne: true } }),
+      TaxiUnit.countDocuments({ status: 'Maintenance', isArchived: { $ne: true } }),
       DriverAssignment.countDocuments({ assignedAt: { $gte: startOfDay, $lt: endOfDay } }),
       DriverAssignment.countDocuments({ status: 'Completed', returnedAt: { $gte: startOfDay, $lt: endOfDay } }),
       DriverAssignment.aggregate([

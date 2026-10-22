@@ -14,9 +14,10 @@ const search = ref('')
 const statusFilter = ref('')
 const page = ref(1)
 const showModal = ref(false)
-const showDeleteModal = ref(false)
+const showArchiveModal = ref(false)
 const editingUnit = ref<TaxiUnit | null>(null)
-const deletingUnit = ref<TaxiUnit | null>(null)
+const archivingUnit = ref<TaxiUnit | null>(null)
+const archiveLoading = ref(false)
 const formLoading = ref(false)
 const formError = ref('')
 
@@ -93,14 +94,20 @@ const handleSubmit = async () => {
   } finally { formLoading.value = false }
 }
 
-const confirmDelete = (unit: TaxiUnit) => { deletingUnit.value = unit; showDeleteModal.value = true }
-const handleDelete = async () => {
-  if (!deletingUnit.value) return
+const confirmArchive = (unit: TaxiUnit) => { archivingUnit.value = unit; showArchiveModal.value = true }
+const handleArchive = async () => {
+  if (!archivingUnit.value) return
+  archiveLoading.value = true
   try {
-    await taxiStore.remove(deletingUnit.value._id)
-    toast.add({ title: 'Taxi unit removed', color: 'success' })
-    showDeleteModal.value = false; loadUnits()
-  } catch { toast.add({ title: 'Delete failed', color: 'error' }) }
+    await taxiStore.archive(archivingUnit.value._id)
+    toast.add({ title: 'Taxi unit archived', description: `Taxi #${archivingUnit.value.taxiNumber} moved to Archives.`, color: 'success' })
+    showArchiveModal.value = false
+    loadUnits()
+  } catch (err: any) {
+    toast.add({ title: 'Archive failed', description: err?.data?.message || err?.message || 'Could not archive taxi unit.', color: 'error' })
+  } finally {
+    archiveLoading.value = false
+  }
 }
 
 const toggleStatus = async (unit: TaxiUnit) => {
@@ -141,12 +148,11 @@ const getActionsMenu = (unit: TaxiUnit) => [
       onSelect: () => openEdit(unit)
     },
     {
-      label: 'Delete Unit',
-      icon: 'i-heroicons-trash',
-      color: 'error' as const,
+      label: 'Archive Taxi',
+      icon: 'i-heroicons-archive-box',
       disabled: unit.status === 'In Use',
-      onClick: () => confirmDelete(unit),
-      onSelect: () => confirmDelete(unit)
+      onClick: () => confirmArchive(unit),
+      onSelect: () => confirmArchive(unit)
     }
   ]
 ]
@@ -411,8 +417,8 @@ const getTaxiColorHex = (colorName: string) => {
               <div class="flex gap-3 pt-2">
                 <button
                   type="button"
-                  class="btn-primary justify-center hover:brightness-110 transition-all"
-                  style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                  class="btn-primary justify-center hover:brightness-110 transition-all whitespace-nowrap"
+                  style="flex: 3; background: linear-gradient(135deg, #dc2626, #991b1b);"
                   @click="showModal = false"
                 >
                   Cancel
@@ -420,7 +426,7 @@ const getTaxiColorHex = (colorName: string) => {
                 <button
                   type="submit"
                   class="btn-primary justify-center whitespace-nowrap"
-                  style="flex: 3;"
+                  style="flex: 7;"
                   :disabled="formLoading"
                 >
                   <UIcon v-if="formLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
@@ -433,20 +439,26 @@ const getTaxiColorHex = (colorName: string) => {
       </Transition>
     </Teleport>
 
-    <!-- Delete Confirm -->
+    <!-- Archive Confirm Modal -->
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeleteModal = false" />
+        <div v-if="showArchiveModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showArchiveModal = false" />
           <div class="relative glass-card p-6 max-w-sm w-full text-center animate-fadeIn">
-            <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-              <UIcon name="i-heroicons-trash" class="w-6 h-6 text-red-400" />
+            <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+              <UIcon name="i-heroicons-archive-box" class="w-6 h-6 text-amber-400" />
             </div>
-            <h3 class="text-lg font-bold text-white mb-2">Delete Taxi Unit?</h3>
-            <p class="text-slate-400 text-sm mb-5">Are you sure you want to permanently delete this taxi unit?<br/><br/>This action cannot be undone.</p>
+            <h3 class="text-lg font-bold text-white mb-2">Archive Taxi Unit?</h3>
+            <p class="text-slate-400 text-sm mb-5">
+              Are you sure you want to archive <span class="text-white font-medium">Taxi #{{ archivingUnit?.taxiNumber }} ({{ archivingUnit?.plateNumber }})</span>?<br/><br/>
+              This will remove the taxi from the active fleet and move it to the Admin Archives tab.
+            </p>
             <div class="flex gap-3">
-              <button class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
-              <button class="btn-primary flex-1" style="background: linear-gradient(135deg, #dc2626, #991b1b);" @click="handleDelete">Remove</button>
+              <button class="btn-secondary flex-1" @click="showArchiveModal = false">Cancel</button>
+              <button class="btn-primary flex-1 !bg-amber-600 hover:!bg-amber-500 text-white" :disabled="archiveLoading" @click="handleArchive">
+                <UIcon v-if="archiveLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+                {{ archiveLoading ? 'Archiving...' : 'Archive' }}
+              </button>
             </div>
           </div>
         </div>

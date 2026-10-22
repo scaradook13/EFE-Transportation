@@ -20,11 +20,15 @@ export interface UserFilters {
   role?: UserRole
   isActive?: boolean
   search?: string
+  archived?: boolean
 }
 
 export const userRepository = {
   async findAll(filters: UserFilters = {}, page = 1, limit = 10) {
-    const query: FilterQuery<IUser> = {}
+    // Archived users are hidden from the active Users list unless explicitly requested
+    const query: FilterQuery<IUser> = {
+      isArchived: filters.archived ? true : { $ne: true }
+    }
 
     if (filters.role) query.role = filters.role
     if (filters.isActive !== undefined) query.isActive = filters.isActive
@@ -38,7 +42,12 @@ export const userRepository = {
 
     const skip = (page - 1) * limit
     const [data, total] = await Promise.all([
-      User.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).lean(),
+      User.find(query)
+        .populate('archivedBy', 'fullName username')
+        .skip(skip)
+        .limit(limit)
+        .sort(filters.archived ? { archivedAt: -1 } : { createdAt: -1 })
+        .lean(),
       User.countDocuments(query)
     ])
 
@@ -71,5 +80,22 @@ export const userRepository = {
 
   async count() {
     return User.countDocuments()
+  },
+
+  async archive(id: string, archivedBy: string) {
+    // Revoke refresh token so the archived user is signed out everywhere
+    return User.findByIdAndUpdate(
+      id,
+      { isArchived: true, archivedAt: new Date(), archivedBy, refreshTokenHash: null },
+      { new: true }
+    )
+  },
+
+  async restore(id: string) {
+    return User.findByIdAndUpdate(
+      id,
+      { isArchived: false, archivedAt: null, archivedBy: null },
+      { new: true }
+    )
   }
 }

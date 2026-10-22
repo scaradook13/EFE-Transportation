@@ -16,9 +16,9 @@ const showModal = ref(false)
 const editingUser = ref<User | null>(null)
 const formLoading = ref(false)
 
-const showDeleteModal = ref(false)
-const userToDelete = ref<User | null>(null)
-const deleteLoading = ref(false)
+const showArchiveModal = ref(false)
+const userToArchive = ref<User | null>(null)
+const archiveLoading = ref(false)
 const formError = ref('')
 const showPassword = ref(false)
 
@@ -164,23 +164,23 @@ const toggleActive = async (user: User) => {
   } catch { toast.add({ title: 'Failed to update user', color: 'error' }) }
 }
 
-const confirmDelete = (user: User) => {
-  userToDelete.value = user
-  showDeleteModal.value = true
+const confirmArchive = (user: User) => {
+  userToArchive.value = user
+  showArchiveModal.value = true
 }
 
-const handleDelete = async () => {
-  if (!userToDelete.value) return
-  deleteLoading.value = true
+const handleArchive = async () => {
+  if (!userToArchive.value) return
+  archiveLoading.value = true
   try {
-    await $fetch(`/api/users/${userToDelete.value._id}`, { method: 'DELETE' })
-    toast.add({ title: 'User deleted successfully', color: 'success' })
+    await $fetch(`/api/users/${userToArchive.value._id}/archive`, { method: 'POST' })
+    toast.add({ title: 'User archived', description: `${userToArchive.value.fullName} has been moved to Archives.`, color: 'success' })
     await loadUsers()
-    showDeleteModal.value = false
+    showArchiveModal.value = false
   } catch (err: unknown) {
-    toast.add({ title: 'Error', description: (err as any)?.data?.message || 'Failed to delete user', color: 'error' })
+    toast.add({ title: 'Error', description: (err as any)?.data?.message || 'Failed to archive user', color: 'error' })
   } finally {
-    deleteLoading.value = false
+    archiveLoading.value = false
   }
 }
 
@@ -225,11 +225,10 @@ const getActionsMenu = (user: User) => {
 
   if (!user.isPrimaryAdmin && !isSelf) {
     items.push({
-      label: 'Delete User',
-      icon: 'i-heroicons-trash',
-      color: 'error' as const,
-      onClick: () => confirmDelete(user),
-      onSelect: () => confirmDelete(user)
+      label: 'Archive User',
+      icon: 'i-heroicons-archive-box',
+      onClick: () => confirmArchive(user),
+      onSelect: () => confirmArchive(user)
     })
   }
 
@@ -433,8 +432,8 @@ const getActionsMenu = (user: User) => {
               <div class="flex gap-3 pt-2">
                 <button
                   type="button"
-                  class="btn-primary justify-center hover:brightness-110 transition-all"
-                  style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                  class="btn-primary justify-center hover:brightness-110 transition-all whitespace-nowrap"
+                  style="flex: 3; background: linear-gradient(135deg, #dc2626, #991b1b);"
                   @click="showModal = false"
                 >
                   Cancel
@@ -442,7 +441,7 @@ const getActionsMenu = (user: User) => {
                 <button
                   type="submit"
                   class="btn-primary justify-center whitespace-nowrap"
-                  style="flex: 3;"
+                  style="flex: 7;"
                   :disabled="formLoading"
                 >
                   <UIcon v-if="formLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
@@ -455,29 +454,31 @@ const getActionsMenu = (user: User) => {
       </Transition>
     </Teleport>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Archive Confirmation Modal -->
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeleteModal = false" />
+        <div v-if="showArchiveModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showArchiveModal = false" />
           <div class="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <div class="flex items-center gap-3 text-red-400 mb-4">
-              <div class="p-3 bg-red-500/10 rounded-full">
-                <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
+            <div class="flex items-center gap-3 text-amber-400 mb-4">
+              <div class="p-3 bg-amber-500/10 rounded-full">
+                <UIcon name="i-heroicons-archive-box" class="w-6 h-6" />
               </div>
-              <h2 class="text-xl font-bold text-white">Delete User?</h2>
+              <h2 class="text-xl font-bold text-white">Archive User?</h2>
             </div>
             
             <p class="text-slate-300 mb-2">
-              Are you sure you want to permanently delete <span class="font-bold text-white">{{ userToDelete?.fullName }}</span>?
+              Are you sure you want to archive <span class="font-bold text-white">{{ userToArchive?.fullName }}</span> ({{ userToArchive?.username }})?
             </p>
-            <p class="text-red-400 text-sm mb-6">This action cannot be undone.</p>
+            <p class="text-slate-400 text-sm mb-6">
+              The user account will be signed out immediately, deactivated from active access, and moved to the Admin Archives tab.
+            </p>
             
             <div class="flex gap-3">
-              <button type="button" class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
-              <button type="button" class="btn-primary flex-1 !bg-red-600 hover:!bg-red-500" @click="handleDelete" :disabled="deleteLoading">
-                <UIcon v-if="deleteLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
-                {{ deleteLoading ? 'Deleting...' : 'Delete' }}
+              <button type="button" class="btn-secondary flex-1" @click="showArchiveModal = false">Cancel</button>
+              <button type="button" class="btn-primary flex-1 !bg-amber-600 hover:!bg-amber-500 text-white" @click="handleArchive" :disabled="archiveLoading">
+                <UIcon v-if="archiveLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+                {{ archiveLoading ? 'Archiving...' : 'Archive' }}
               </button>
             </div>
           </div>

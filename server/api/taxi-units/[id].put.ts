@@ -21,6 +21,13 @@ export default defineEventHandler(async (event) => {
         message: 'This taxi is currently in use and cannot be edited until it has been returned.',
       })
     }
+
+    if ((existingTaxi as { isArchived?: boolean })?.isArchived) {
+      throw createError({
+        statusCode: 409,
+        message: 'This taxi unit is archived. Restore it from the Archives tab before editing.'
+      })
+    }
   
     // Check uniqueness (ignoring self)
     const errors: Record<string, string> = {}

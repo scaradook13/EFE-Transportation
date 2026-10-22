@@ -23,6 +23,9 @@ export interface IUser extends Document {
   refreshTokenHash: string | null
   lastLogin: Date | null
   lastActivity: Date | null
+  isArchived: boolean
+  archivedAt: Date | null
+  archivedBy: mongoose.Types.ObjectId | null
   createdAt: Date
   updatedAt: Date
   comparePassword(candidatePassword: string): Promise<boolean>
@@ -105,6 +108,20 @@ const UserSchema = new Schema<IUser>(
     },
     lastActivity: {
       type: Date,
+      default: null
+    },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    archivedAt: {
+      type: Date,
+      default: null
+    },
+    archivedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
       default: null
     }
   },

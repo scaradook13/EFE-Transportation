@@ -941,8 +941,8 @@ const formatDutyTime = (timeIn: string) => {
             <div class="flex gap-3 mt-6">
               <button
                 type="button"
-                class="btn-primary justify-center hover:brightness-110 transition-all"
-                style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                class="btn-primary justify-center hover:brightness-110 transition-all whitespace-nowrap"
+                style="flex: 3; background: linear-gradient(135deg, #dc2626, #991b1b);"
                 @click="showIssueModal = false"
               >
                 Cancel
@@ -950,7 +950,7 @@ const formatDutyTime = (timeIn: string) => {
               <button
                 type="button"
                 class="btn-primary justify-center whitespace-nowrap"
-                style="flex: 3;"
+                style="flex: 7;"
                 :disabled="issuingTaxi || !issueForm.driverId || !issueForm.taxiUnitId"
                 @click="handleIssue"
               >

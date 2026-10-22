@@ -65,9 +65,19 @@ export const useDriverStore = defineStore('drivers', {
       return response.data
     },
 
-    async remove(id: string) {
-      await $fetch(`/api/drivers/${id}`, { method: 'DELETE' })
+    async archive(id: string) {
+      await $fetch(`/api/drivers/${id}/archive`, { method: 'POST' })
       this.drivers = this.drivers.filter(d => d._id !== id)
+    },
+
+    // Admin-only (Archives tab)
+    async restore(id: string) {
+      await $fetch(`/api/drivers/${id}/restore`, { method: 'POST' })
+    },
+
+    // Admin-only (Archives tab) — only works on archived drivers
+    async permanentDelete(id: string) {
+      await $fetch<any>(`/api/drivers/${id}`, { method: 'DELETE' })
     }
   }
 })

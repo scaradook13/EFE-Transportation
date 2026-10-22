@@ -52,9 +52,19 @@ export const useTaxiUnitStore = defineStore('taxiUnits', {
       return response.data
     },
 
-    async remove(id: string) {
-      await $fetch(`/api/taxi-units/${id}`, { method: 'DELETE' })
+    async archive(id: string) {
+      await $fetch(`/api/taxi-units/${id}/archive`, { method: 'POST' })
       this.taxiUnits = this.taxiUnits.filter(t => t._id !== id)
+    },
+
+    // Admin-only (Archives tab)
+    async restore(id: string) {
+      await $fetch(`/api/taxi-units/${id}/restore`, { method: 'POST' })
+    },
+
+    // Admin-only (Archives tab) — only works on archived taxi units
+    async permanentDelete(id: string) {
+      await $fetch(`/api/taxi-units/${id}`, { method: 'DELETE' })
     }
   }
 })

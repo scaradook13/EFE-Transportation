@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   const template = body.template ? String(body.template) : ''
 
   // 1:N Biometric Identification across all enrolled users
-  const allEnrolledUsers = await User.find({ 'biometric.enrolled': true, isActive: true }).select('_id fullName username role email isPrimaryAdmin +biometric.template')
+  const allEnrolledUsers = await User.find({ 'biometric.enrolled': true, isActive: true, isArchived: { $ne: true } }).select('_id fullName username role email isPrimaryAdmin +biometric.template')
   if (allEnrolledUsers.length === 0) {
     throw createError({
       statusCode: 400,

@@ -41,6 +41,9 @@ export interface IDriver extends Document {
     counter?: number
     registeredAt?: Date
   }
+  isArchived: boolean
+  archivedAt: Date | null
+  archivedBy: mongoose.Types.ObjectId | null
   createdBy: mongoose.Types.ObjectId
   updatedBy: mongoose.Types.ObjectId | null
   createdAt: Date
@@ -178,6 +181,20 @@ const DriverSchema = new Schema<IDriver>(
       credentialPublicKey: { type: String },
       counter: { type: Number, default: 0 },
       registeredAt: { type: Date }
+    },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    archivedAt: {
+      type: Date,
+      default: null
+    },
+    archivedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
     },
     createdBy: {
       type: Schema.Types.ObjectId,

@@ -21,6 +21,11 @@ export default defineEventHandler(async (event) => {
       return { success: false, message: 'The Primary Administrator account is protected and cannot be edited.' }
     }
 
+    if (targetUser.isArchived) {
+      setResponseStatus(event, 409)
+      return { success: false, message: 'This user is archived. Restore the account from the Archives tab before editing.' }
+    }
+
     try {
       const body = await readBody(event)
       
@@ -45,6 +50,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Permanent delete — only from the Archives tab, only for archived users
   if (method === 'DELETE') {
     const targetUser = await userRepository.findById(id)
     if (!targetUser) throw createError({ statusCode: 404, message: 'User not found' })
@@ -52,14 +58,24 @@ export default defineEventHandler(async (event) => {
     const authUser = requireRole(event, 'admin')
 
     if (targetUser.isPrimaryAdmin) {
-      logAudit(event, authUser.userId, 'DELETE_USER_BLOCKED', 'User Management', `Attempted to delete primary admin: ${targetUser.username}`)
+      logAudit(event, authUser.userId, 'PERMANENT_DELETE_USER_BLOCKED', 'Archives', `Attempted to delete primary admin: ${targetUser.username}`)
       setResponseStatus(event, 403)
       return { success: false, message: 'The primary administrator account cannot be deleted.' }
     }
 
+    if (targetUser._id.toString() === authUser.userId) {
+      setResponseStatus(event, 403)
+      return { success: false, message: 'You cannot delete your own account.' }
+    }
+
+    if (!targetUser.isArchived) {
+      setResponseStatus(event, 409)
+      return { success: false, message: 'Only archived users can be permanently deleted. Archive the user first.' }
+    }
+
     await userRepository.remove(id)
-    logAudit(event, authUser.userId, 'DELETE_USER', 'User Management', `Deleted user: ${targetUser.username}`)
-    return successResponse(null, 'User deleted successfully')
+    logAudit(event, authUser.userId, 'PERMANENT_DELETE_USER', 'Archives', `Permanently deleted user: ${targetUser.fullName} (${targetUser.username})`)
+    return successResponse(null, 'User permanently deleted')
   }
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })

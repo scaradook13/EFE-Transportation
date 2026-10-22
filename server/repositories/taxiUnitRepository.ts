@@ -26,11 +26,15 @@ export interface UpdateTaxiUnitDto {
 export interface TaxiUnitFilters {
   status?: TaxiUnitStatus
   search?: string
+  archived?: boolean
 }
 
 export const taxiUnitRepository = {
   async findAll(filters: TaxiUnitFilters = {}, page = 1, limit = 10) {
-    const query: FilterQuery<ITaxiUnit> = {}
+    // Archived taxis are hidden from every active list unless explicitly requested
+    const query: FilterQuery<ITaxiUnit> = {
+      isArchived: filters.archived ? true : { $ne: true }
+    }
 
     if (filters.status) query.status = filters.status
     if (filters.search) {
@@ -46,7 +50,12 @@ export const taxiUnitRepository = {
 
     const skip = (page - 1) * limit
     const [data, total] = await Promise.all([
-      TaxiUnit.find(query).skip(skip).limit(limit).sort({ taxiNumber: 1 }).lean(),
+      TaxiUnit.find(query)
+        .populate('archivedBy', 'fullName username')
+        .skip(skip)
+        .limit(limit)
+        .sort(filters.archived ? { archivedAt: -1 } : { taxiNumber: 1 })
+        .lean(),
       TaxiUnit.countDocuments(query)
     ])
 
@@ -83,6 +92,22 @@ export const taxiUnitRepository = {
   },
 
   async findAvailable() {
-    return TaxiUnit.find({ status: 'Available' }).select('_id taxiNumber plateNumber brand model taxiType').lean()
+    return TaxiUnit.find({ status: 'Available', isArchived: { $ne: true } }).select('_id taxiNumber plateNumber brand model taxiType').lean()
+  },
+
+  async archive(id: string, archivedBy: string) {
+    return TaxiUnit.findByIdAndUpdate(
+      id,
+      { isArchived: true, archivedAt: new Date(), archivedBy },
+      { new: true }
+    )
+  },
+
+  async restore(id: string) {
+    return TaxiUnit.findByIdAndUpdate(
+      id,
+      { isArchived: false, archivedAt: null, archivedBy: null },
+      { new: true }
+    )
   }
 }

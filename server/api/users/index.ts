@@ -15,7 +15,8 @@ export default defineEventHandler(async (event) => {
     const result = await userRepository.findAll({
       role: query.role as 'admin' | 'dispatcher' | 'hr' | undefined,
       isActive: query.isActive !== undefined ? query.isActive === 'true' : undefined,
-      search: query.search as string | undefined
+      search: query.search as string | undefined,
+      archived: query.archived === 'true'
     }, page, limit)
 
     return paginatedResponse(result.data, {

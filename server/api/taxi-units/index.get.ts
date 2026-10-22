@@ -5,11 +5,16 @@ export default defineEventHandler(async (event) => {
   await connectDB()
 
   const query = getQuery(event)
+  const archived = query.archived === 'true'
+  // Only administrators can browse archived taxi units
+  if (archived) requireRole(event, 'admin')
+
   const page = Number(query.page) || 1
   const limit = Number(query.limit) || 10
   const filters = {
     status: query.status as 'Available' | 'In Use' | 'Maintenance' | undefined,
-    search: query.search as string | undefined
+    search: query.search as string | undefined,
+    archived
   }
 
   const result = await taxiUnitService.getAll(filters, page, limit)

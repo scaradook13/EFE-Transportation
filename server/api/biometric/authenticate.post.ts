@@ -1,6 +1,7 @@
 import { User } from '../../models/User'
 import { Driver } from '../../models/Driver'
 import { biometricBridge } from '../../utils/biometricBridge'
+import { getJwtSecret } from '../../utils/auth'
 import jwt from 'jsonwebtoken'
 
 export default defineEventHandler(async (event) => {
@@ -8,7 +9,6 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => ({}))
   const mode = body.mode || (body.userId ? '1:1' : '1:N')
   const targetType = body.targetType || 'user' // 'user' or 'driver'
-  const config = useRuntimeConfig()
 
   const template = body.template ? String(body.template) : ''
 
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
 
         const biometricToken = jwt.sign(
           { userId: driver._id.toString(), driverId: driver.driverId, fullName: driver.fullName, type: 'driver_biometric_auth' },
-          config.jwtSecret,
+          getJwtSecret(),
           { expiresIn: '5m' }
         )
 
@@ -106,7 +106,7 @@ export default defineEventHandler(async (event) => {
 
       const biometricToken = jwt.sign(
         { userId: user._id.toString(), username: user.username, role: user.role, type: 'biometric_auth' },
-        config.jwtSecret,
+        getJwtSecret(),
         { expiresIn: '5m' }
       )
 
@@ -154,7 +154,7 @@ export default defineEventHandler(async (event) => {
 
       const biometricToken = jwt.sign(
         { userId: matched._id.toString(), username: matched.username, role: matched.role, type: 'biometric_auth' },
-        config.jwtSecret,
+        getJwtSecret(),
         { expiresIn: '5m' }
       )
 

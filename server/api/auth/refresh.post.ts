@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     const { User } = await import('../../models/User')
     const user = await User.findById(payload.userId).select('+refreshTokenHash +isActive')
 
-    if (!user || !user.isActive || !user.refreshTokenHash) {
+    if (!user || !user.isActive || user.isArchived || !user.refreshTokenHash) {
       throw createError({ statusCode: 401, message: 'Invalid session' })
     }
 

@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   await connectDB()
 
   const dbUser = await User.findById(authUser.userId)
-  if (!dbUser || !dbUser.isActive) {
+  if (!dbUser || !dbUser.isActive || dbUser.isArchived) {
     throw createError({ statusCode: 401, message: 'User not found or deactivated' })
   }
 

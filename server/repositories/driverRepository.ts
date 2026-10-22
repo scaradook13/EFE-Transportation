@@ -56,11 +56,15 @@ export interface DriverFilters {
   employmentStatus?: EmploymentStatus
   operationalStatus?: 'Available' | 'Active' | 'Not Available'
   search?: string
+  archived?: boolean
 }
 
 export const driverRepository = {
   async findAll(filters: DriverFilters = {}, page = 1, limit = 10) {
-    const query: FilterQuery<IDriver> = {}
+    // Archived drivers are hidden from every active list unless explicitly requested
+    const query: FilterQuery<IDriver> = {
+      isArchived: filters.archived ? true : { $ne: true }
+    }
 
     if (filters.employmentStatus) query.employmentStatus = filters.employmentStatus
     if (filters.operationalStatus === 'Available') {
@@ -88,9 +92,10 @@ export const driverRepository = {
       Driver.find(query)
         .populate('createdBy', 'fullName username')
         .populate('updatedBy', 'fullName username')
+        .populate('archivedBy', 'fullName username')
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt: -1 })
+        .sort(filters.archived ? { archivedAt: -1 } : { createdAt: -1 })
         .lean(),
       Driver.countDocuments(query)
     ])
@@ -155,6 +160,22 @@ export const driverRepository = {
   },
 
   async findActive() {
-    return Driver.find({ employmentStatus: 'Active' }).select('_id fullName driverId').lean()
+    return Driver.find({ employmentStatus: 'Active', isArchived: { $ne: true } }).select('_id fullName driverId').lean()
+  },
+
+  async archive(id: string, archivedBy: string) {
+    return Driver.findByIdAndUpdate(
+      id,
+      { isArchived: true, archivedAt: new Date(), archivedBy },
+      { new: true }
+    )
+  },
+
+  async restore(id: string) {
+    return Driver.findByIdAndUpdate(
+      id,
+      { isArchived: false, archivedAt: null, archivedBy: null },
+      { new: true }
+    )
   }
 }

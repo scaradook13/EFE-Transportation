@@ -109,14 +109,6 @@ const formatDateTime = (d: string) => new Date(d).toLocaleString('en-PH', {
 const getUserName = (log: { user: { fullName?: string } | string }) => {
   return (typeof log.user === 'object' && log.user !== null) ? log.user.fullName : 'Unknown'
 }
-
-const actionColor = (action: string) => {
-  if (action.includes('DELETE')) return 'text-red-400'
-  if (action.includes('CREATE')) return 'text-green-400'
-  if (action.includes('UPDATE')) return 'text-blue-400'
-  if (action === 'LOGIN') return 'text-yellow-400'
-  return 'text-slate-400'
-}
 </script>
 
 <template>
@@ -192,7 +184,7 @@ const actionColor = (action: string) => {
                   <td class="text-left text-xs text-slate-400 whitespace-nowrap">{{ formatDateTime(log.createdAt) }}</td>
                   <td class="text-left text-white font-medium text-sm">{{ getUserName(log) }}</td>
                   <td class="text-center">
-                    <span :class="['font-mono text-xs font-bold', actionColor(log.action)]">{{ log.action }}</span>
+                    <span class="font-mono text-xs font-semibold text-slate-300">{{ log.action }}</span>
                   </td>
                   <td class="text-center">
                     <span class="px-2.5 py-0.5 rounded text-xs font-medium inline-block" style="background: rgba(255,255,255,0.05); color: #94a3b8;">

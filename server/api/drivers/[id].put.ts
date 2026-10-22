@@ -30,6 +30,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    if ((existingDriver as { isArchived?: boolean })?.isArchived) {
+      throw createError({
+        statusCode: 409,
+        message: 'This driver is archived. An administrator must restore the profile from the Archives tab before it can be edited.'
+      })
+    }
+
     const oldEmploymentStatus = existingDriver?.employmentStatus
     const oldOpStatus = existingDriver?.operationalStatus
 

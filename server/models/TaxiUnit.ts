@@ -15,6 +15,9 @@ export interface ITaxiUnit extends Omit<Document, 'model'> {
   color: string
   taxiType: TaxiType
   status: TaxiUnitStatus
+  isArchived: boolean
+  archivedAt: Date | null
+  archivedBy: mongoose.Types.ObjectId | null
   createdAt: Date
   updatedAt: Date
 }
@@ -77,6 +80,20 @@ const TaxiUnitSchema = new Schema<ITaxiUnit>(
       },
       default: 'Available',
       required: true
+    },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    archivedAt: {
+      type: Date,
+      default: null
+    },
+    archivedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
     }
   },
   {

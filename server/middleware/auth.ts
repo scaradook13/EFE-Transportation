@@ -47,10 +47,14 @@ export default defineEventHandler(async (event) => {
     
     const { User } = await import('../models/User')
     // Fetch isActive and refreshTokenHash (+ to include the select:false field)
-    const dbUser = await User.findById(userPayload.userId).select('+refreshTokenHash isActive')
+    const dbUser = await User.findById(userPayload.userId).select('+refreshTokenHash isActive isArchived')
     
     if (!dbUser) {
       throw createError({ statusCode: 401, message: 'Account no longer exists' })
+    }
+    
+    if (dbUser.isArchived) {
+      throw createError({ statusCode: 401, message: 'Account has been archived' })
     }
     
     if (!dbUser.isActive) {

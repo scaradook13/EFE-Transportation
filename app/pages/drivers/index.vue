@@ -14,9 +14,10 @@ const statusFilter = ref('')
 const page = ref(1)
 const showModal = ref(false)
 const showCameraModal = ref(false)
-const showDeleteModal = ref(false)
+const showArchiveModal = ref(false)
 const editingDriver = ref<Driver | null>(null)
-const deletingDriver = ref<Driver | null>(null)
+const archivingDriver = ref<Driver | null>(null)
+const archiveLoading = ref(false)
 const formLoading = ref(false)
 import { driverSchema } from '~~/shared/utils/validations'
 import { useFormValidation } from '~/composables/useFormValidation'
@@ -88,6 +89,69 @@ const form = reactive<CreateDriverPayload>({
 
 const { errors, validate, touch, clearErrors, setErrors } = useFormValidation(driverSchema, form)
 
+// Real-time Driver ID availability check state
+const isCheckingDriverId = ref(false)
+const driverIdAvailable = ref<boolean | null>(null)
+const driverIdMessage = ref('')
+
+const checkDriverIdAvailability = useDebounceFn(async (val: string) => {
+  const trimmed = val.trim()
+  if (!trimmed) {
+    driverIdAvailable.value = null
+    driverIdMessage.value = ''
+    isCheckingDriverId.value = false
+    return
+  }
+
+  // If editing and ID is unchanged, it's valid
+  if (editingDriver.value && editingDriver.value.driverId.toLowerCase() === trimmed.toLowerCase()) {
+    driverIdAvailable.value = true
+    driverIdMessage.value = ''
+    isCheckingDriverId.value = false
+    return
+  }
+
+  try {
+    const res = await $fetch<{ success: boolean; data: { available: boolean; message: string } }>('/api/drivers/check-id', {
+      query: {
+        driverId: trimmed,
+        excludeId: editingDriver.value?._id
+      }
+    })
+    // Ensure form input has not changed while waiting for response
+    if (form.driverId.trim().toLowerCase() === trimmed.toLowerCase()) {
+      driverIdAvailable.value = res.data.available
+      driverIdMessage.value = res.data.message
+    }
+  } catch {
+    driverIdAvailable.value = null
+    driverIdMessage.value = ''
+  } finally {
+    isCheckingDriverId.value = false
+  }
+}, 300)
+
+watch(() => form.driverId, (newVal) => {
+  if (!showModal.value) return
+  const trimmed = (newVal || '').trim()
+  if (!trimmed) {
+    driverIdAvailable.value = null
+    driverIdMessage.value = ''
+    isCheckingDriverId.value = false
+    return
+  }
+  if (editingDriver.value && editingDriver.value.driverId.toLowerCase() === trimmed.toLowerCase()) {
+    driverIdAvailable.value = true
+    driverIdMessage.value = ''
+    isCheckingDriverId.value = false
+    return
+  }
+  isCheckingDriverId.value = true
+  driverIdAvailable.value = null
+  driverIdMessage.value = ''
+  checkDriverIdAvailability(newVal)
+})
+
 const resetForm = () => {
   Object.assign(form, {
     driverId: '', fullName: '', address: '', contactNumber: '',
@@ -99,6 +163,9 @@ const resetForm = () => {
   clearErrors()
   editingDriver.value = null
   showCameraModal.value = false
+  isCheckingDriverId.value = false
+  driverIdAvailable.value = null
+  driverIdMessage.value = ''
 }
 
 const loadDrivers = () => {
@@ -113,7 +180,12 @@ onMounted(loadDrivers)
 watch([search, statusFilter], useDebounceFn(() => { page.value = 1; loadDrivers() }, 300))
 watch(page, loadDrivers)
 
-const openCreate = () => { resetForm(); formError.value = ''; showModal.value = true }
+const openCreate = () => {
+  resetForm()
+  formError.value = ''
+  showModal.value = true
+}
+
 const openEdit = (driver: Driver) => {
   if ((driver as any).operationalStatus === 'Active') {
     toast.add({ title: 'This driver cannot be edited while on duty.', color: 'error' })
@@ -122,6 +194,9 @@ const openEdit = (driver: Driver) => {
   editingDriver.value = driver
   formError.value = ''
   clearErrors()
+  isCheckingDriverId.value = false
+  driverIdAvailable.value = true
+  driverIdMessage.value = ''
   Object.assign(form, {
     driverId: driver.driverId,
     fullName: driver.fullName,
@@ -165,6 +240,39 @@ const handlePhotoUpload = async (event: Event) => {
 const handleSubmit = async () => {
   if (!validate()) return
 
+  if (isCheckingDriverId.value) {
+    toast.add({ title: 'Checking Driver ID', description: 'Please wait while we verify the Driver ID availability.', color: 'warning' })
+    return
+  }
+
+  if (driverIdAvailable.value === false) {
+    toast.add({ title: 'Duplicate Driver ID', description: driverIdMessage.value || 'This Driver ID is already in use.', color: 'error' })
+    return
+  }
+
+  // If driverId was entered but not yet checked (e.g. instant submit), check synchronously
+  if (driverIdAvailable.value === null && form.driverId.trim()) {
+    isCheckingDriverId.value = true
+    try {
+      const res = await $fetch<{ success: boolean; data: { available: boolean; message: string } }>('/api/drivers/check-id', {
+        query: {
+          driverId: form.driverId.trim(),
+          excludeId: editingDriver.value?._id
+        }
+      })
+      driverIdAvailable.value = res.data.available
+      driverIdMessage.value = res.data.message
+      if (!res.data.available) {
+        toast.add({ title: 'Duplicate Driver ID', description: res.data.message || 'This Driver ID is already in use.', color: 'error' })
+        return
+      }
+    } catch {
+      // Allow proceeding if network error
+    } finally {
+      isCheckingDriverId.value = false
+    }
+  }
+
   formError.value = ''
   formLoading.value = true
 
@@ -197,16 +305,19 @@ const handleSubmit = async () => {
   }
 }
 
-const confirmDelete = (driver: Driver) => { deletingDriver.value = driver; showDeleteModal.value = true }
-const handleDelete = async () => {
-  if (!deletingDriver.value) return
+const confirmArchive = (driver: Driver) => { archivingDriver.value = driver; showArchiveModal.value = true }
+const handleArchive = async () => {
+  if (!archivingDriver.value) return
+  archiveLoading.value = true
   try {
-    await driverStore.remove(deletingDriver.value._id)
-    toast.add({ title: 'Driver deleted', color: 'success' })
-    showDeleteModal.value = false
+    await driverStore.archive(archivingDriver.value._id)
+    toast.add({ title: 'Driver archived', description: `${archivingDriver.value.fullName} has been moved to the Archives tab.`, color: 'success' })
+    showArchiveModal.value = false
     loadDrivers()
-  } catch {
-    toast.add({ title: 'Delete failed', color: 'error' })
+  } catch (err: any) {
+    toast.add({ title: 'Archive failed', description: err?.data?.message || err?.message || 'Could not archive driver.', color: 'error' })
+  } finally {
+    archiveLoading.value = false
   }
 }
 
@@ -218,25 +329,84 @@ const isLicenseExpiringSoon = (d: string) => {
 }
 const isLicenseExpired = (d: string) => new Date(d) < new Date()
 
-const getActionsMenu = (driver: Driver) => [
-  [
-    {
-      label: 'Edit Profile',
-      icon: 'i-heroicons-pencil-square',
-      disabled: (driver as any).operationalStatus === 'Active',
-      onClick: () => openEdit(driver),
-      onSelect: () => openEdit(driver)
-    },
-    {
-      label: 'Delete Driver',
-      icon: 'i-heroicons-trash',
-      color: 'error' as const,
-      disabled: (driver as any).operationalStatus === 'Active',
-      onClick: () => confirmDelete(driver),
-      onSelect: () => confirmDelete(driver)
-    }
+const togglingStatusId = ref<string | null>(null)
+
+const toggleDriverStatus = async (driver: Driver) => {
+  if ((driver as any).operationalStatus === 'Active') {
+    toast.add({
+      title: 'Action blocked',
+      description: 'Cannot change status while driver is on duty.',
+      color: 'error'
+    })
+    return
+  }
+
+  const isCurrentlyActive = driver.employmentStatus === 'Active'
+  const newStatus = isCurrentlyActive ? 'Inactive' : 'Active'
+
+  if (newStatus === 'Active' && isLicenseExpired(driver.licenseExpiration)) {
+    toast.add({
+      title: 'Cannot activate driver',
+      description: 'Driver license is expired. Please update license expiration date first.',
+      color: 'error'
+    })
+    return
+  }
+
+  togglingStatusId.value = driver._id
+  try {
+    await driverStore.update(driver._id, { employmentStatus: newStatus })
+    toast.add({
+      title: 'Driver Status Updated',
+      description: `${driver.fullName} is now ${newStatus === 'Active' ? 'Active (Available)' : 'Inactive (Not Available)'}.`,
+      color: 'success'
+    })
+    loadDrivers()
+  } catch (err: any) {
+    toast.add({
+      title: 'Failed to update status',
+      description: err?.data?.message || err?.message || 'Could not update driver status.',
+      color: 'error'
+    })
+  } finally {
+    togglingStatusId.value = null
+  }
+}
+
+const getActionsMenu = (driver: Driver) => {
+  const isDutyActive = (driver as any).operationalStatus === 'Active'
+  const isLicenseExp = isLicenseExpired(driver.licenseExpiration)
+  const isCurrentlyActive = driver.employmentStatus === 'Active'
+  const isToggling = togglingStatusId.value === driver._id
+
+  return [
+    [
+      {
+        label: isCurrentlyActive ? 'Set as Inactive' : 'Set as Active',
+        icon: isToggling
+          ? 'i-heroicons-arrow-path'
+          : (isCurrentlyActive ? 'i-heroicons-no-symbol' : 'i-heroicons-check-circle'),
+        disabled: isDutyActive || (!isCurrentlyActive && isLicenseExp) || isToggling,
+        onClick: () => toggleDriverStatus(driver),
+        onSelect: () => toggleDriverStatus(driver)
+      },
+      {
+        label: 'Edit Profile',
+        icon: 'i-heroicons-pencil-square',
+        disabled: isDutyActive,
+        onClick: () => openEdit(driver),
+        onSelect: () => openEdit(driver)
+      },
+      {
+        label: 'Archive Driver',
+        icon: 'i-heroicons-archive-box',
+        disabled: isDutyActive,
+        onClick: () => confirmArchive(driver),
+        onSelect: () => confirmArchive(driver)
+      }
+    ]
   ]
-]
+}
 </script>
 
 <template>
@@ -390,6 +560,26 @@ const getActionsMenu = (driver: Driver) => [
 
                       <!-- HR Actions: Displayed directly inline on table row -->
                       <template v-if="authStore.isHR">
+                        <!-- Toggle Status -->
+                        <button
+                          class="p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          :class="driver.employmentStatus === 'Active' ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'"
+                          :disabled="(driver as any).operationalStatus === 'Active' || (driver.employmentStatus !== 'Active' && isLicenseExpired(driver.licenseExpiration)) || togglingStatusId === driver._id"
+                          :title="(driver as any).operationalStatus === 'Active' ? 'Cannot change status while on duty' : (driver.employmentStatus === 'Active' ? 'Set as Inactive' : 'Set as Active')"
+                          @click.stop="toggleDriverStatus(driver)"
+                        >
+                          <UIcon
+                            v-if="togglingStatusId === driver._id"
+                            name="i-heroicons-arrow-path"
+                            class="w-4 h-4 animate-spin text-slate-400"
+                          />
+                          <UIcon
+                            v-else
+                            :name="driver.employmentStatus === 'Active' ? 'i-heroicons-no-symbol' : 'i-heroicons-check-circle'"
+                            class="w-4 h-4"
+                          />
+                        </button>
+
                         <!-- Edit Driver Profile -->
                         <button
                           class="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
@@ -400,14 +590,14 @@ const getActionsMenu = (driver: Driver) => [
                           <UIcon name="i-heroicons-pencil-square" class="w-4 h-4" />
                         </button>
 
-                        <!-- Delete Driver -->
+                        <!-- Archive Driver -->
                         <button
-                          class="p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors text-rose-400 hover:text-rose-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                          class="p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors text-amber-400 hover:text-amber-300 disabled:opacity-30 disabled:cursor-not-allowed"
                           :disabled="(driver as any).operationalStatus === 'Active'"
-                          :title="(driver as any).operationalStatus === 'Active' ? 'Cannot delete while on duty' : 'Delete Driver'"
-                          @click.stop="confirmDelete(driver)"
+                          :title="(driver as any).operationalStatus === 'Active' ? 'Cannot archive while on duty' : 'Archive Driver'"
+                          @click.stop="confirmArchive(driver)"
                         >
-                          <UIcon name="i-heroicons-trash" class="w-4 h-4" />
+                          <UIcon name="i-heroicons-archive-box" class="w-4 h-4" />
                         </button>
                       </template>
 
@@ -502,8 +692,47 @@ const getActionsMenu = (driver: Driver) => [
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label class="form-label">Driver ID *</label>
-                  <input v-model="form.driverId" @blur="touch('driverId')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.driverId }" required placeholder="DRV-001" />
+                  <div class="relative">
+                    <input
+                      v-model="form.driverId"
+                      @blur="touch('driverId')"
+                      type="text"
+                      class="form-input !pr-10"
+                      style="padding-right: 2.5rem !important;"
+                      :class="{
+                        'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.driverId || driverIdAvailable === false,
+                        'border-emerald-500/50 focus:border-emerald-500 focus:ring-emerald-500/20': driverIdAvailable === true && form.driverId.trim() && !errors.driverId
+                      }"
+                      required
+                      placeholder="DRV-001"
+                    />
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <UIcon
+                        v-if="isCheckingDriverId"
+                        name="i-heroicons-arrow-path"
+                        class="w-4 h-4 text-slate-400 animate-spin"
+                      />
+                      <UIcon
+                        v-else-if="driverIdAvailable === true && form.driverId.trim() && !errors.driverId"
+                        name="i-heroicons-check-circle"
+                        class="w-4 h-4 text-emerald-400"
+                      />
+                      <UIcon
+                        v-else-if="driverIdAvailable === false"
+                        name="i-heroicons-exclamation-circle"
+                        class="w-4 h-4 text-red-400"
+                      />
+                    </div>
+                  </div>
                   <p v-if="errors.driverId" class="mt-1 text-xs text-red-400">{{ errors.driverId }}</p>
+                  <p v-else-if="driverIdAvailable === false && driverIdMessage" class="mt-1 text-xs text-red-400 flex items-center gap-1">
+                    <UIcon name="i-heroicons-x-circle" class="w-3.5 h-3.5 shrink-0" />
+                    {{ driverIdMessage }}
+                  </p>
+                  <p v-else-if="driverIdAvailable === true && form.driverId.trim() && !editingDriver" class="mt-1 text-xs text-emerald-400 flex items-center gap-1">
+                    <UIcon name="i-heroicons-check-circle" class="w-3.5 h-3.5 shrink-0" />
+                    Driver ID is available
+                  </p>
                 </div>
                 <div>
                   <label class="form-label">Full Name *</label>
@@ -526,19 +755,10 @@ const getActionsMenu = (driver: Driver) => [
                   <p v-if="errors.birthDate" class="mt-1 text-xs text-red-400">{{ errors.birthDate }}</p>
                 </div>
                 <div>
-                  <label class="form-label">Employment Status</label>
-                  <select v-model="form.employmentStatus" @blur="touch('employmentStatus')" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.employmentStatus }">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                  <p v-if="errors.employmentStatus" class="mt-1 text-xs text-red-400">{{ errors.employmentStatus }}</p>
-                </div>
-                <div>
                   <label class="form-label">Date Hired</label>
                   <input v-model="form.dateHired" @blur="touch('dateHired')" type="date" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.dateHired }" />
                   <p v-if="errors.dateHired" class="mt-1 text-xs text-red-400">{{ errors.dateHired }}</p>
                 </div>
-                <div class="hidden sm:block"></div> <!-- Spacer to maintain alignment -->
                 <div>
                   <label class="form-label">License Number *</label>
                   <input v-model="form.licenseNumber" @blur="touch('licenseNumber')" type="text" class="form-input" :class="{ 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20': errors.licenseNumber }" required placeholder="N01-23-456789" />
@@ -647,8 +867,8 @@ const getActionsMenu = (driver: Driver) => [
               <div class="flex gap-3 pt-2">
                 <button
                   type="button"
-                  class="btn-primary justify-center hover:brightness-110 transition-all"
-                  style="flex: 7; background: linear-gradient(135deg, #dc2626, #991b1b);"
+                  class="btn-primary justify-center hover:brightness-110 transition-all whitespace-nowrap"
+                  style="flex: 3; background: linear-gradient(135deg, #dc2626, #991b1b);"
                   @click="showModal = false"
                 >
                   Cancel
@@ -656,8 +876,8 @@ const getActionsMenu = (driver: Driver) => [
                 <button
                   type="submit"
                   class="btn-primary justify-center whitespace-nowrap"
-                  style="flex: 3;"
-                  :disabled="formLoading"
+                  style="flex: 7;"
+                  :disabled="formLoading || isCheckingDriverId || driverIdAvailable === false"
                 >
                   <UIcon v-if="formLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
                   {{ formLoading ? 'Saving...' : (editingDriver ? 'Update Driver' : 'Create Driver') }}
@@ -669,20 +889,26 @@ const getActionsMenu = (driver: Driver) => [
       </Transition>
     </Teleport>
 
-    <!-- Delete Confirm Modal -->
+    <!-- Archive Confirm Modal -->
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showDeleteModal = false" />
+        <div v-if="showArchiveModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showArchiveModal = false" />
           <div class="relative glass-card p-6 max-w-sm w-full animate-fadeIn text-center">
-            <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-              <UIcon name="i-heroicons-trash" class="w-6 h-6 text-red-400" />
+            <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+              <UIcon name="i-heroicons-archive-box" class="w-6 h-6 text-amber-400" />
             </div>
-            <h3 class="text-lg font-bold text-white mb-2">Delete Driver?</h3>
-            <p class="text-slate-400 text-sm mb-5">Are you sure you want to permanently delete this driver?<br/><br/>This action cannot be undone.</p>
+            <h3 class="text-lg font-bold text-white mb-2">Archive Driver?</h3>
+            <p class="text-slate-400 text-sm mb-5">
+              Are you sure you want to archive <span class="text-white font-medium">{{ archivingDriver?.fullName }}</span>?<br/><br/>
+              This will remove the driver from the active drivers list and move them to the Admin Archives.
+            </p>
             <div class="flex gap-3">
-              <button class="btn-secondary flex-1" @click="showDeleteModal = false">Cancel</button>
-              <button class="btn-primary flex-1" style="background: linear-gradient(135deg, #dc2626, #991b1b);" @click="handleDelete">Delete</button>
+              <button class="btn-secondary flex-1" @click="showArchiveModal = false">Cancel</button>
+              <button class="btn-primary flex-1 !bg-amber-600 hover:!bg-amber-500 text-white" :disabled="archiveLoading" @click="handleArchive">
+                <UIcon v-if="archiveLoading" name="i-heroicons-arrow-path" class="w-4 h-4 animate-spin" />
+                {{ archiveLoading ? 'Archiving...' : 'Archive' }}
+              </button>
             </div>
           </div>
         </div>

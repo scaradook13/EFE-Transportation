@@ -22,7 +22,7 @@ export const authService = {
 
     const user = await userRepository.findByUsername(dto.username)
 
-    if (!user) {
+    if (!user || user.isArchived) {
       throw createError({ statusCode: 401, message: 'Invalid username or password' })
     }
 

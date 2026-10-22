@@ -1,32 +1,33 @@
 import { driverService } from '~~/server/services/driverService'
 import { assignmentRepository } from '~~/server/repositories/assignmentRepository'
-import { DriverAssignment } from '~~/server/models/DriverAssignment'
 
+/**
+ * Permanently delete a driver — Admin only, from the Archives tab.
+ * The driver must be archived first. Past assignment/boundary records are kept;
+ * they will simply no longer link to a driver profile.
+ */
 export default defineEventHandler(async (event) => {
-  const authUser = requireRole(event, 'admin', 'hr')
+  const authUser = requireRole(event, 'admin')
   await connectDB()
   const id = getRouterParam(event, 'id')!
 
-  const activeAssignment = await assignmentRepository.findActiveByDriver(id)
-  if (activeAssignment) {
-    logAudit(event, authUser.userId, 'DELETE_DRIVER', 'Drivers', `Attempted Delete Driver: Blocked - Driver has an active assignment`)
+  const existing = await driverService.getById(id)
+
+  if (!(existing as { isArchived?: boolean }).isArchived) {
     setResponseStatus(event, 409)
-    return { success: false, message: 'This driver is currently on duty and cannot be deleted until the assigned taxi has been returned.' }
+    return { success: false, message: 'Only archived drivers can be permanently deleted. Archive the driver first.' }
   }
 
-  const assignmentCount = await DriverAssignment.countDocuments({ driver: id })
-  if (assignmentCount > 0) {
-    logAudit(event, authUser.userId, 'DELETE_DRIVER', 'Drivers', `Attempted Delete Driver: Blocked - Driver has ${assignmentCount} historical assignments`)
+  const activeAssignment = await assignmentRepository.findActiveByDriver(id)
+  if (activeAssignment) {
+    logAudit(event, authUser.userId, 'PERMANENT_DELETE_DRIVER_BLOCKED', 'Archives', `Attempted to delete ${existing.fullName}: driver has an active assignment`)
     setResponseStatus(event, 409)
-    return {
-      success: false,
-      message: 'Cannot delete a driver with existing dispatch and boundary history. To preserve audit and financial records, please set their status to Inactive instead.'
-    }
+    return { success: false, message: 'This driver still has an active assignment and cannot be deleted until the taxi has been returned.' }
   }
 
   const driver = await driverService.remove(id)
 
-  logAudit(event, authUser.userId, 'DELETE_DRIVER', 'Drivers', `Deleted driver: ${(driver as { fullName?: string })?.fullName}`)
+  logAudit(event, authUser.userId, 'PERMANENT_DELETE_DRIVER', 'Archives', `Permanently deleted driver: ${(driver as { fullName?: string })?.fullName} (${existing.driverId})`)
 
-  return successResponse(null, 'Driver deleted successfully')
+  return successResponse(null, 'Driver permanently deleted')
 })
